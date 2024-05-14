@@ -154,7 +154,7 @@ class FrontControllerCore extends Controller
 
         parent::__construct();
 
-        if (Configuration::get('PS_SSL_ENABLED') && Configuration::get('PS_SSL_ENABLED_EVERYWHERE')) {
+        if (Configuration::get('PS_SSL_ENABLED')) {
             $this->ssl = true;
         }
 
@@ -276,7 +276,12 @@ class FrontControllerCore extends Controller
 
         // Redirect user to login page, if the controller requires authentication
         if ($this->auth && !$this->context->customer->isLogged()) {
-            Tools::redirect('index.php?controller=authentication' . ($this->authRedirection ? '&back=' . $this->authRedirection : ''));
+            Tools::redirect($this->context->link->getPageLink(
+                'authentication',
+                null,
+                null,
+                $this->authRedirection ? ['back' => $this->authRedirection] : null
+            ));
         }
 
         // If the theme is missing, we need to throw an Exception
@@ -359,10 +364,10 @@ class FrontControllerCore extends Controller
              * If geolocation is enabled and we are not allowed to order from our country, we will delete the cart.
              */
             } elseif (
-                (int) (Configuration::get('PS_GEOLOCATION_ENABLED'))
+                (int) Configuration::get('PS_GEOLOCATION_ENABLED')
                 && !in_array(strtoupper($this->context->cookie->iso_code_country), explode(';', Configuration::get('PS_ALLOWED_COUNTRIES')))
                 && $cart->nbProducts()
-                && (int) (Configuration::get('PS_GEOLOCATION_NA_BEHAVIOR')) != -1
+                && (int) Configuration::get('PS_GEOLOCATION_NA_BEHAVIOR') != -1
                 && !FrontController::isInWhitelistForGeolocation()
                 && !in_array($_SERVER['SERVER_NAME'], ['localhost', '127.0.0.1', '::1'])
             ) {
@@ -436,14 +441,19 @@ class FrontControllerCore extends Controller
                 $cart->id_address_delivery = 0;
                 $cart->id_address_invoice = 0;
             }
-
-            // Needed if the merchant want to give a free product to every visitors
             $this->context->cart = $cart;
-            CartRule::autoAddToCart($this->context);
         } else {
             $this->context->cart = $cart;
             $this->context->cart->checkAndUpdateAddresses();
         }
+
+        /*
+         * We also need to run automatic cart rule actions.
+         * autoAddToCart is required to automatically assigning newly created cart rules with no code (automatic).
+         * autoRemoveFromCart is needed to verify, if the cart rules already in a cart are still valid.
+         */
+        CartRule::autoRemoveFromCart($this->context);
+        CartRule::autoAddToCart($this->context);
 
         $this->context->smarty->assign('request_uri', Tools::safeOutput(urldecode($_SERVER['REQUEST_URI'])));
 
@@ -467,8 +477,6 @@ class FrontControllerCore extends Controller
         if (!Tools::isPHPCLI() && Country::GEOLOC_FORBIDDEN == $this->restrictedCountry) {
             $this->displayRestrictedCountryPage();
         }
-
-        $this->context->cart = $cart;
 
         Hook::exec(
             'actionFrontControllerInitAfter',
@@ -549,7 +557,7 @@ class FrontControllerCore extends Controller
      *
      * @return array Variables to be inserted in the "prestashop" javascript object
      *
-     * @throws \PrestaShop\PrestaShop\Core\Filter\FilterException
+     * @throws PrestaShop\PrestaShop\Core\Filter\FilterException
      * @throws PrestaShopException
      */
     protected function buildFrontEndObject($object)
@@ -814,7 +822,7 @@ class FrontControllerCore extends Controller
             } else {
                 header('Location: ' . Tools::getShopDomain(true) . $_SERVER['REQUEST_URI']);
             }
-            exit();
+            exit;
         }
     }
 
@@ -865,7 +873,7 @@ class FrontControllerCore extends Controller
 
                     try {
                         $record = $reader->city(Tools::getRemoteAddr());
-                    } catch (\GeoIp2\Exception\AddressNotFoundException $e) {
+                    } catch (GeoIp2\Exception\AddressNotFoundException $e) {
                         $record = null;
                     }
 
@@ -1489,7 +1497,7 @@ class FrontControllerCore extends Controller
                 'js_url' => _THEME_JS_DIR_,
                 'pic_url' => _THEME_PROD_PIC_DIR_,
                 'theme_assets' => _THEME_DIR_ . 'assets/',
-                'theme_dir' => $this->getThemeDir(),
+                'theme_dir' => _THEME_DIR_,
             ];
 
             $themeAssetsConfig = $this->context->shop->theme->get('assets', false);
@@ -1887,7 +1895,7 @@ class FrontControllerCore extends Controller
     /**
      * @deprecated Since 9.0 and will be removed in the next major.
      */
-    protected function updateQueryString(array $extraParams = null)
+    protected function updateQueryString(?array $extraParams = null)
     {
         return Tools::updateCurrentQueryString($extraParams);
     }

@@ -1,0 +1,120 @@
+# Dedicated services for Admin app
+parameters:
+  # We set priorities lower than the RouterListener (32) so that the LegacyRouterChecker class is called first.
+  # The correct behaviour of Context Listeners on legacy routes depends on LegacyRouterChecker.
+  employee_listener_priority: 31
+  language_listener_priority: 30
+  default_listener_priority: 29
+  # We initialize some default values for some contexts so that they are correctly initialized when no route is found
+  # so that the not found page can still be rendered correctly
+  before_route_listener_priority: 33
+
+services:
+  _defaults:
+    public: false
+    autowire: true
+    autoconfigure: true
+
+  # SECURITY
+  PrestaShopBundle\EventListener\Admin\TokenizedUrlsListener:
+    autowire: true
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+
+  PrestaShopBundle\EventListener\Admin\EmployeeSessionSubscriber:
+    autowire: true
+    autoconfigure: true
+    arguments:
+      $entityManager: '@doctrine.orm.default_entity_manager'
+
+  # Priority 40 to be called before the RouterListener (which has priority 32)
+  PrestaShopBundle\EventListener\Admin\LegacyUrlListener:
+    arguments:
+      - "@prestashop.bundle.routing.converter.legacy_url_converter"
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: 40 }
+
+  # Priority 30 to be called after the RouterListener
+  PrestaShopBundle\EventListener\Admin\LegacyParametersListener:
+    arguments:
+      - "@prestashop.bundle.routing.converter.legacy_parameters_converter"
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: 30 }
+
+  PrestaShopBundle\EventListener\Admin\AccessDeniedListener:
+    autowire: true
+    tags:
+      - { name: kernel.event_listener, event: kernel.exception, method: onKernelException }
+
+  PrestaShopBundle\EventListener\Admin\AdminSecurityListener:
+    autowire: true
+    tags:
+      - { name: kernel.event_listener, event: kernel.controller, method: onKernelController }
+
+  PrestaShopBundle\EventListener\Admin\BackUrlRedirectResponseListener:
+    arguments:
+      - '@PrestaShop\PrestaShop\Core\Util\Url\BackUrlProvider'
+      - "@prestashop.adapter.legacy.context"
+    tags:
+      - { name: kernel.event_listener, event: kernel.response, method: onKernelResponse }
+
+  PrestaShopBundle\EventListener\Admin\UserLocaleListener:
+    autowire: true
+    arguments:
+      - "@prestashop.adapter.legacy.configuration"
+      - "@prestashop.core.admin.lang.repository"
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: 15 }
+
+  PrestaShopBundle\EventListener\Admin\DemoModeEnabledListener:
+    autowire: true
+    autoconfigure: true
+
+  # Context listeners
+
+  PrestaShopBundle\EventListener\Admin\Context\DefaultLanguageContextListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: '%before_route_listener_priority%' }
+
+  PrestaShopBundle\EventListener\Admin\Context\DefaultShopContextListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: '%before_route_listener_priority%' }
+
+  # Employee context must have a higher priority because Shop and Language depend on it
+  PrestaShopBundle\EventListener\Admin\Context\EmployeeContextListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: '%employee_listener_priority%' }
+
+  # Language depends on Employee so its priority is lower, however it has higher priority than Currency and Country because they depend on Language
+  PrestaShopBundle\EventListener\Admin\Context\LanguageContextListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: '%language_listener_priority%' }
+
+  PrestaShopBundle\EventListener\Admin\Context\ShopContextListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: '%default_listener_priority%' }
+
+  PrestaShopBundle\EventListener\Admin\Context\CurrencyContextListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: '%default_listener_priority%' }
+
+  PrestaShopBundle\EventListener\Admin\Context\CountryContextListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest, priority: '%default_listener_priority%' }
+
+  # This listener must run after the router listener since it's based on the request attributes that are defined by the router
+  PrestaShopBundle\EventListener\Admin\Context\LegacyControllerContextListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+
+  PrestaShopBundle\EventListener\Admin\Context\LegacyContextListener:
+    arguments:
+      $legacyBuilders: !tagged_iterator core.legacy_context_builder
+    tags:
+      - { name: kernel.event_listener, event: kernel.controller, method: onKernelController }
+
+  # SSL middleware
+  PrestaShopBundle\EventListener\Admin\SSLMiddlewareListener:
+    autowire: true
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }

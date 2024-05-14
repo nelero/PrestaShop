@@ -319,8 +319,6 @@ function gencode(size)
   for (var i = 1; i <= size; ++i) {
     getE('code').value += chars.charAt(Math.floor(randomNumbers[i]/2**32 * chars.length));
   }
-
-  getE('cart-rules-highlight').style.display = '';
 }
 
 var tpl_viewing_window = null;
@@ -1209,7 +1207,7 @@ function verifyMail(testMsg, testSubject)
         "testSubject" : textSubject,
         "token"     : token_mail,
         "ajax"      : 1,
-        "tab"       : 'AdminEmails',
+        "controller"       : 'AdminEmails',
         "action"      : 'sendMailTest'
       },
        success: function(ret)

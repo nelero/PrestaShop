@@ -26,31 +26,21 @@ inputs:
     required: false
     description: True to enable Developer mode
     default: 'false'
-  BO_LAYOUT:
+  DISABLE_MAKE:
     required: false
-    description: Choose between Legacy and Symfony layout
-    default: 'legacy'
+    description: true to disable Make
+    default: 'false'
 
 runs:
   using: 'composite'
   steps:
-    - name: PrestaShop Configuration (Copy of Config API)
-      if: inputs.CP_API_CONFIG == 'true'
-      shell: bash
-      run: cp ./app/config/security_test.yml ./app/config/security_prod.yml
-
-    - name: Adapt Back Office layout
-      if: inputs.backoffice_layout == 'symfony'
-      shell: bash
-      run: |
-        echo PS_FF_SYMFONY_LAYOUT=true >> .env
-
     # Certificate for SSL
     - name: Generate a Certificate
       if: inputs.ENABLE_SSL == 'true'
       shell: bash
       run: |
         ## Install MkCert
+          sudo apt-get update
           sudo apt install libnss3-tools
           curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
           chmod +x mkcert-v*-linux-amd64
@@ -68,6 +58,7 @@ runs:
     - name: Build and Run shop with docker
       shell: bash
       env:
+        DISABLE_MAKE: ${{ (inputs.DISABLE_MAKE == 'true') && '1' || '0' }}
         PS_ENABLE_SSL: ${{ (inputs.ENABLE_SSL == 'true') && '1' || '0' }}
         PS_INSTALL_AUTO: ${{ (inputs.INSTALL_AUTO == 'true') && '1' || '0' }}
         PS_USE_DOCKER_MAILDEV: 0
@@ -86,5 +77,5 @@ runs:
         ADMIN_PASSWD: 'Correct Horse Battery Staple'
       run: |
         USER_ID=$(id -u) GROUP_ID=$(id -g) \
-        docker-compose -f docker-compose.yml up -d --build
+        docker compose -f docker-compose.yml up -d --build
         bash -c 'while [[ "$(curl -L -s -o /dev/null -w %{http_code} ${{ env.URL_FO }}${{ env.URL_PING }})" != "200" ]]; do sleep 5; done'

@@ -21,27 +21,45 @@ class Product extends FOBasePage {
 
   public readonly messageAlertNotificationAlreadyRegistered: string;
 
-  private readonly warningMessage: string;
+  protected warningMessage: string;
 
-  private readonly productFlags: string;
+  protected productFlags: string;
 
   private readonly productFlag: (flag: string) => string;
 
-  private readonly productName: string;
+  protected productName: string;
 
-  private readonly productCoverImg: string;
+  protected productCoverImg: string;
 
-  private readonly thumbFirstImg: string;
+  protected thumbImg: (row: number) => string;
 
-  private readonly thumbSecondImg: string;
+  private readonly thumbImgProductModal: (row: number) => string;
+
+  protected scrollBoxImages: (direction: string) => string;
+
+  protected zoomIcon: string;
+
+  private readonly productModal: string;
+
+  protected productCoverImgProductModal: string;
 
   private readonly productQuantity: string;
 
-  private readonly shortDescription: string;
+  protected productRowQuantityUpDownButton: (direction: string) => string;
+
+  protected shortDescription: string;
 
   private readonly productDescription: string;
 
-  private readonly customizedTextarea: string;
+  protected customizationBlock: string;
+
+  protected customizedTextarea: (row: number) => string;
+
+  private readonly customizedFile: (row: number) => string;
+
+  protected customizationsMessage: (row: number) => string;
+
+  private readonly customizationImg: (row: number) => string;
 
   private readonly saveCustomizationButton: string;
 
@@ -49,7 +67,7 @@ class Product extends FOBasePage {
 
   private readonly blockCartModal: string;
 
-  private readonly proceedToCheckoutButton: string;
+  protected proceedToCheckoutButton: string;
 
   private readonly productQuantitySpan: string;
 
@@ -62,6 +80,12 @@ class Product extends FOBasePage {
   private readonly productAvailability: string;
 
   private readonly productAvailabilityIcon: string;
+
+  protected productAttributeVariantSpan: (itemNumber: number) => string;
+
+  protected productAttributeSelect: (itemNumber: number) => string;
+
+  protected productAttributeButton: (itemNumber: number) => string;
 
   private readonly productSizeSelect: string;
 
@@ -81,7 +105,7 @@ class Product extends FOBasePage {
 
   private readonly pinterestSocialSharing: string;
 
-  private readonly productPricesBlock: string;
+  protected productPricesBlock: string;
 
   private readonly discountAmountSpan: string;
 
@@ -91,17 +115,19 @@ class Product extends FOBasePage {
 
   private readonly packProductsPrice: string;
 
-  private readonly productPrice: string;
+  protected productPrice: string;
 
   private readonly taxShippingDeliveryBlock: string;
 
-  private readonly deliveryInformationSpan: string;
+  protected deliveryInformationSpan: string;
 
   private readonly productInformationBlock: string;
 
   private readonly productMailAlertsBlock: string;
 
   private readonly productMailAlertsEmailInput: string;
+
+  private readonly productMailAlertsGDPRLabel: string;
 
   private readonly productMailAlertsNotifyButton: string;
 
@@ -141,6 +167,8 @@ class Product extends FOBasePage {
 
   private readonly productReviewModal: string;
 
+  private readonly productReviewModalGDPRLabel: string;
+
   private readonly reviewForm: string;
 
   private readonly reviewTitle: string;
@@ -151,26 +179,30 @@ class Product extends FOBasePage {
 
   private readonly reviewSubmitButton: string;
 
+  private readonly reviewCancelButton: string;
+
   private readonly reviewSentConfirmationModal: string;
 
   private readonly closeReviewSentConfirmationModalButton: string;
 
-  private readonly productInPackList: (productInList: number) => string;
+  protected readonly productInPackList: (productInList: number) => string;
 
-  private readonly productInPackImage: (productInList: number) => string;
+  protected productInPackImage: (productInList: number) => string;
 
-  private readonly productInPackName: (productInList: number) => string;
+  protected productInPackName: (productInList: number) => string;
 
-  private readonly productInPackPrice: (productInList: number) => string;
+  protected productInPackPrice: (productInList: number) => string;
 
-  private readonly productInPackQuantity: (productInList: number) => string;
+  protected productInPackQuantity: (productInList: number) => string;
+
+  private readonly productsBlock: (blockName: string) => string;
 
   /**
    * @constructs
    * Setting up texts and selectors to use on product page
    */
-  constructor() {
-    super();
+  constructor(theme: string = 'classic') {
+    super(theme);
 
     // Messages
     this.messageNotVisibleToCustomers = 'This product is not visible to your customers.';
@@ -184,13 +216,23 @@ class Product extends FOBasePage {
     this.productFlag = (flag: string) => `#content li.product-flag${flag.length === 0 ? '' : `.${flag}`}`;
     this.productName = '#main h1';
     this.productCoverImg = '#content .product-cover img';
-    this.thumbFirstImg = '#content li:nth-child(1) img.js-thumb';
-    this.thumbSecondImg = '#content li:nth-child(2) img.js-thumb';
+    this.thumbImg = (row: number) => `#content li:nth-child(${row}) img.js-thumb`;
+    this.scrollBoxImages = (direction: string) => `#content div.scroll-box-arrows.scroll i.material-icons.${direction}`;
+    this.zoomIcon = 'div.images-container div.product-cover i.zoom-in';
+    this.productModal = '#product-modal';
+    this.productCoverImgProductModal = '#product-modal picture img.js-modal-product-cover';
+    this.thumbImgProductModal = (row: number) => `#thumbnails li:nth-child(${row}) picture img.js-modal-thumb`;
     this.productQuantity = '#quantity_wanted';
+    this.productRowQuantityUpDownButton = (direction: string) => 'span.input-group-btn-vertical'
+      + ` button.bootstrap-touchspin-${direction}`;
     this.shortDescription = '#product-description-short';
     this.productDescription = '#description';
-    this.customizedTextarea = '.product-customization-item .product-message';
+    this.customizationBlock = 'div.product-container div.product-information section.product-customization';
+    this.customizedTextarea = (row: number) => `.product-customization-item:nth-child(${row}) .product-message`;
+    this.customizedFile = (row: number) => `li:nth-child(${row}) .js-file-input`;
     this.saveCustomizationButton = 'button[name=\'submitCustomizedData\']';
+    this.customizationsMessage = (row: number) => `div.product-information li:nth-child(${row}) h6`;
+    this.customizationImg = (row: number) => `div.product-information li:nth-child(${row}) a.remove-image`;
     this.addToCartButton = '#add-to-cart-or-refresh button[data-button-action="add-to-cart"]';
     this.blockCartModal = '#blockcart-modal';
     this.proceedToCheckoutButton = `${this.blockCartModal} div.cart-content-btn a`;
@@ -200,6 +242,9 @@ class Product extends FOBasePage {
     this.continueShoppingButton = `${this.blockCartModal} div.cart-content-btn button`;
     this.productAvailability = '#product-availability';
     this.productAvailabilityIcon = `${this.productAvailability} i`;
+    this.productAttributeVariantSpan = (itemNumber: number) => `div.product-variants-item:nth-child(${itemNumber}) span`;
+    this.productAttributeSelect = (itemNumber: number) => `div.product-variants-item:nth-child(${itemNumber}) select`;
+    this.productAttributeButton = (itemNumber: number) => `div.product-variants-item:nth-child(${itemNumber}) ul input`;
     this.productSizeSelect = '#group_1';
     this.productSizeOption = (size: string) => `${this.productSizeSelect} option[title=${size}]`;
     this.productColorUl = '#group_2';
@@ -225,6 +270,8 @@ class Product extends FOBasePage {
     this.productInformationBlock = 'div.product-information';
     this.productMailAlertsBlock = `${this.productInformationBlock} div.js-mailalert`;
     this.productMailAlertsEmailInput = `${this.productMailAlertsBlock} input[type="email"]`;
+    this.productMailAlertsGDPRLabel = `${this.productMailAlertsBlock} div.gdpr_consent label.psgdpr_consent_message `
+      + 'span:nth-of-type(2)';
     this.productMailAlertsNotifyButton = `${this.productMailAlertsBlock} button`;
     this.productMailAlertsNotification = `${this.productMailAlertsBlock} article`;
 
@@ -247,11 +294,13 @@ class Product extends FOBasePage {
     this.emptyReviewAddReviewButton = '#empty-product-comment button';
     this.notEmptyReviewAddReviewButton = '#product-comments-list-footer button';
     this.productReviewModal = '#post-product-comment-modal';
+    this.productReviewModalGDPRLabel = `${this.productReviewModal} div.gdpr_consent label span:nth-of-type(2)`;
     this.reviewForm = '#post-product-comment-form';
     this.reviewTitle = `${this.reviewForm} input[name=comment_title]`;
     this.reviewTextContent = `${this.reviewForm} textarea[name=comment_content]`;
     this.reviewRating = (rating: number) => `.star-full div:nth-child(${rating})`;
     this.reviewSubmitButton = `${this.reviewForm} button[type=submit]`;
+    this.reviewCancelButton = `${this.reviewForm} button[data-dismiss="modal"]`;
     this.reviewSentConfirmationModal = '#product-comment-posted-modal';
     this.closeReviewSentConfirmationModalButton = `${this.reviewSentConfirmationModal} button`;
 
@@ -262,6 +311,8 @@ class Product extends FOBasePage {
     this.productInPackPrice = (productInList: number) => `${this.productInPackList(productInList)} div.pack-product-price`;
     this.productInPackQuantity = (productInList: number) => `${this.productInPackList(productInList)}`
       + ' div.pack-product-quantity';
+
+    this.productsBlock = (blockName: string) => `#content-wrapper section[data-type="${blockName}"]`;
   }
 
   // Methods
@@ -313,6 +364,24 @@ class Product extends FOBasePage {
   }
 
   /**
+   * Return if the GDPR field is present
+   * @param page {Page} Browser tab
+   * @returns {Promise<boolean>}
+   */
+  async hasBlockMailAlertGDPRLabel(page: Page): Promise<boolean> {
+    return await page.locator(this.productMailAlertsGDPRLabel).count() !== 0;
+  }
+
+  /**
+   * Return the label for the GDPR field
+   * @param page {Page} Browser tab
+   * @returns {Promise<string>}
+   */
+  async getBlockMailAlertGDPRLabel(page: Page): Promise<string> {
+    return this.getTextContent(page, this.productMailAlertsGDPRLabel);
+  }
+
+  /**
    * Returns notifications block in block Mail Alert
    * @param page {Page} Browser tab
    * @return {Promise<string>}
@@ -325,8 +394,9 @@ class Product extends FOBasePage {
    *
    * @param page {Page} Browser tab
    * @param email {string|null} Email if needed
+   * @return {Promise<string>}
    */
-  async notifyEmailAlert(page: Page, email: string|null = null) {
+  async notifyEmailAlert(page: Page, email: string | null = null): Promise<string> {
     if (email) {
       await this.setValue(page, this.productMailAlertsEmailInput, email);
     }
@@ -400,6 +470,19 @@ class Product extends FOBasePage {
   }
 
   /**
+   * Click on product in pack
+   * @param page {Page} Browser tab
+   * @param productInList {number} Product in pack list
+   * @returns {Promise<void>}
+   */
+  async clickProductInPackList(page: Page, productInList: number = 1): Promise<void> {
+    // Add +1 due to span before the article
+    const productIdentifier: number = productInList + 1;
+
+    return this.clickAndWaitForURL(page, this.productInPackName(productIdentifier));
+  }
+
+  /**
    * get regular price
    * @param page {Page} Browser tab
    * @returns {Promise<number>}
@@ -446,24 +529,6 @@ class Product extends FOBasePage {
   }
 
   /**
-   * Get selected product attributes
-   * @param page {Page} Browser tab
-   * @returns {Promise<ProductAttribute[]>}
-   */
-  async getSelectedProductAttributes(page: Page): Promise<ProductAttribute[]> {
-    return [
-      {
-        name: 'size',
-        value: await this.getTextContent(page, `${this.productSizeSelect} option[selected]`, false),
-      },
-      {
-        name: 'color',
-        value: await this.getAttributeContent(page, `${this.productColors} input[checked]`, 'title') ?? '',
-      },
-    ];
-  }
-
-  /**
    * Get product image urls
    * @param page {Page} Browser tab
    * @returns {Promise<ProductImageUrls>}
@@ -471,7 +536,7 @@ class Product extends FOBasePage {
   async getProductImageUrls(page: Page): Promise<ProductImageUrls> {
     return {
       coverImage: await this.getAttributeContent(page, this.productCoverImg, 'src'),
-      thumbImage: await this.getAttributeContent(page, this.thumbFirstImg, 'src'),
+      thumbImage: await this.getAttributeContent(page, this.thumbImg(1), 'src'),
     };
   }
 
@@ -556,30 +621,89 @@ class Product extends FOBasePage {
   }
 
   /**
-   * Select thumb image
+   * get the URL of the cover image
    * @param page {Page} Browser tab
-   * @param id {number} Id for the thumb
-   * @returns {Promise<string>}
+   * @returns {Promise<string|null>}
    */
-  async selectThumbImage(page: Page, id: number): Promise<string> {
-    if (id === 1) {
-      await this.waitForSelectorAndClick(page, this.thumbFirstImg);
-      await this.waitForVisibleSelector(page, `${this.thumbFirstImg}.selected`);
-    } else {
-      await this.waitForSelectorAndClick(page, this.thumbSecondImg);
-      await this.waitForVisibleSelector(page, `${this.thumbSecondImg}.selected`);
-    }
+  async getCoverImage(page: Page): Promise<string | null> {
     return this.getAttributeContent(page, this.productCoverImg, 'src');
   }
 
   /**
-   * Select product attributes
+   * Select thumb image
    * @param page {Page} Browser tab
-   * @param quantity {number} Quantity of the product that customer wants
+   * @param imageRow {number} Row of the image
+   * @returns {Promise<string>}
+   */
+  async selectThumbImage(page: Page, imageRow: number): Promise<string> {
+    await this.waitForSelectorAndClick(page, this.thumbImg(imageRow));
+    await this.waitForVisibleSelector(page, `${this.thumbImg(imageRow)}.selected`);
+
+    return this.getAttributeContent(page, this.productCoverImg, 'src');
+  }
+
+  /**
+   * Scroll box arrows images
+   * @param page {Page} Browser tab
+   * @param direction {string} Direction to scroll
+   * @returns {Promise<void>}
+   */
+  async scrollBoxArrowsImages(page: Page, direction: string): Promise<void> {
+    await page.locator(this.scrollBoxImages(direction)).click();
+    await page.waitForTimeout(1000);
+  }
+
+  /**
+   * Zoom cover image
+   * @param page {Page} Browser tab
+   * @returns {Promise<boolean>}
+   */
+  async zoomCoverImage(page: Page): Promise<boolean> {
+    await page.locator(this.zoomIcon).click({force: true});
+
+    return this.elementVisible(page, this.productModal, 1000);
+  }
+
+  /**
+   * Select thumb image
+   * @param page {Page} Browser tab
+   * @param imageRow {number} Row of the image
+   * @returns {Promise<string>}
+   */
+  async selectThumbImageFromProductModal(page: Page, imageRow: number): Promise<string> {
+    await this.waitForSelectorAndClick(page, this.thumbImgProductModal(imageRow));
+    await this.waitForVisibleSelector(page, `${this.thumbImgProductModal(imageRow)}.selected`);
+
+    return this.getAttributeContent(page, this.productCoverImgProductModal, 'src');
+  }
+
+  /**
+   * get the URL of the cover image
+   * @param page {Page} Browser tab
+   * @returns {Promise<string|null>}
+   */
+  async getCoverImageFromProductModal(page: Page): Promise<string | null> {
+    return this.getAttributeContent(page, this.productCoverImg, 'src');
+  }
+
+  /**
+   * Close product modal
+   * @param page {Page} Browser tab
+   * @returns {Promise<boolean>}
+   */
+  async closeProductModal(page: Page): Promise<boolean> {
+    await page.mouse.click(5, 5);
+
+    return this.elementNotVisible(page, this.productModal, 2000);
+  }
+
+  /**
+   * Select default product attributes
+   * @param page {Page} Browser tab
    * @param attributes {ProductAttribute[]}  Product's attributes data to select
    * @returns {Promise<void>}
    */
-  async selectAttributes(page: Page, quantity: number, attributes: ProductAttribute[]): Promise<void> {
+  async selectDefaultAttributes(page: Page, attributes: ProductAttribute[]): Promise<void> {
     if (attributes.length === 0) {
       return;
     }
@@ -604,39 +728,168 @@ class Product extends FOBasePage {
   }
 
   /**
+   * Select product attributes
+   * @param page {Page} Browser tab
+   * @param type {string} Type of block (Select or radio)
+   * @param attributes {ProductAttribute[]}  Product's attributes data to select
+   * @param itemNumber {number} The row of attribute block
+   * @returns {Promise<void>}
+   */
+  async selectAttributes(page: Page, type: string, attributes: ProductAttribute[], itemNumber: number = 1): Promise<void> {
+    if (attributes.length === 0) {
+      return;
+    }
+    for (let i: number = 0; i < attributes.length; i++) {
+      if (type === 'select') {
+        await Promise.all([
+          this.waitForAttachedSelector(page, `${this.productAttributeSelect(itemNumber)} option[selected]`),
+          this.selectByVisibleText(page, this.productAttributeSelect(itemNumber), attributes[i].value),
+        ]);
+      } else {
+        await Promise.all([
+          this.waitForVisibleSelector(page, `${this.productAttributeButton(itemNumber)}[title=${attributes[i].value}][checked]`),
+          page.locator(`${this.productAttributeButton(itemNumber)}[title=${attributes[i].value}]`).click(),
+        ]);
+      }
+    }
+  }
+
+  /**
+   * Get selected attribute
+   * @param page {Page} Browser tab
+   * @param variantItem {string} Variant row
+   * @param type {string} Type of attribute
+   * @returns {Promise<string>}
+   */
+  async getSelectedAttribute(page: Page, variantItem: number, type: string = 'select'): Promise<string> {
+    if (type === 'select') {
+      return this.getTextContent(page, `${this.productAttributeSelect(variantItem)} option[selected]`, false);
+    }
+    return this.getTextContent(page, `${this.productAttributeButton(variantItem)}[checked] +span`, false);
+  }
+
+  /**
+   * Get selected attribute text
+   * @param page {Page} Browser tab
+   * @param variantItem {number} Variant row
+   * @returns {Promise<string>}
+   */
+  async getSelectedAttributeText(page: Page, variantItem: number): Promise<string> {
+    return this.getTextContent(page, this.productAttributeVariantSpan(variantItem));
+  }
+
+  /**
+   * Set product customizations
+   * @param page {Page} Browser tab
+   * @param customizedTexts {string[]} Texts to set in customizations input
+   * @param save {boolean} True if we need to save
+   * @returns {Promise<void>}
+   */
+  async setProductCustomizations(page: Page, customizedTexts: string[], save: boolean = true): Promise<void> {
+    for (let i = 1; i <= customizedTexts.length; i++) {
+      await this.setValue(page, this.customizedTextarea(i), customizedTexts[i - 1]);
+    }
+    if (save) {
+      await this.waitForSelectorAndClick(page, this.saveCustomizationButton);
+    }
+  }
+
+  /**
+   * Set product file customizations
+   * @param page {Page} Browser tab
+   * @param customizedFiles {string[]} Files to set in customizations input
+   * @param row {number} Row to start
+   * @param save {boolean} True if we need to save
+   * @returns {Promise<void>}
+   */
+  async setProductFileCustomizations(page: Page, customizedFiles: string[], row: number = 1, save: boolean = true):
+    Promise<void> {
+    let j = row;
+
+    for (let i = 1; i <= customizedFiles.length; i++) {
+      await this.uploadFile(page, this.customizedFile(j), customizedFiles[i - 1]);
+      j += 1;
+    }
+    if (save) {
+      await this.waitForSelectorAndClick(page, this.saveCustomizationButton);
+    }
+  }
+
+  /**
+   * Get customizations messages
+   * @param page {Page} Browser tab
+   * @param customizationRow {number} Number of customizations to display
+   * @returns {Promise<string>}
+   */
+  async getCustomizationsMessages(page: Page, customizationRow: number): Promise<string> {
+    return this.getTextContent(page, this.customizationsMessage(customizationRow));
+  }
+
+  /**
+   * Is customization message visible
+   * @param page {Page} Browser tab
+   * @param customizationRow {number} Number of customizations to display
+   * @returns {Promise<string>}
+   */
+  async isCustomizationMessageVisible(page: Page, customizationRow: number): Promise<boolean> {
+    return this.elementVisible(page, this.customizationsMessage(customizationRow));
+  }
+
+  /**
+   * Get customization image
+   * @param page {Page} Browser tab
+   * @param customizationRow {number} Number of customizations to display
+   * @returns {Promise<string>}
+   */
+  async getCustomizationImage(page: Page, customizationRow: number): Promise<string> {
+    return this.getAttributeContent(page, this.customizationImg(customizationRow), 'href');
+  }
+
+  /**
+   * Is customization image visible
+   * @param page {Page} Browser tab
+   * @param customizationRow {number} Number of customizations to display
+   * @returns {Promise<string>}
+   */
+  async isCustomizationImageVisible(page: Page, customizationRow: number): Promise<boolean> {
+    return this.elementVisible(page, this.customizationImg(customizationRow));
+  }
+
+  /**
    * Click on Add to cart button then on Proceed to checkout button in the modal
    * @param page {Page} Browser tab
-   * @param quantity {number} Quantity of the product that customer wants
+   * @param quantity {number|string} Quantity of the product that customer wants
    * @param combination {ProductAttribute[]}  Product's combination data to add to cart
-   * @param proceedToCheckout {boolean} True to click on proceed to checkout button on modal
+   * @param proceedToCheckout {boolean|null} True to click on proceed to checkout button on modal
    * @param customizedText {string} Value of customization
    * @returns {Promise<void>}
    */
   async addProductToTheCart(
     page: Page,
-    quantity: number = 1,
+    quantity: number | string = 1,
     combination: ProductAttribute[] = [],
-    proceedToCheckout: boolean = true,
+    proceedToCheckout: boolean | null = true,
     customizedText: string = 'text',
   ): Promise<void> {
-    await this.selectAttributes(page, quantity, combination);
+    await this.selectDefaultAttributes(page, combination);
     if (quantity !== 1) {
-      await this.setValue(page, this.productQuantity, quantity.toString());
+      await this.setValue(page, this.productQuantity, quantity);
     }
 
-    if (await this.elementVisible(page, this.customizedTextarea, 2000)) {
-      await this.setValue(page, this.customizedTextarea, customizedText);
+    if (await this.elementVisible(page, this.customizedTextarea(1), 2000)) {
+      await this.setValue(page, this.customizedTextarea(1), customizedText);
       await this.waitForSelectorAndClick(page, this.saveCustomizationButton);
     }
 
     await this.waitForSelectorAndClick(page, this.addToCartButton);
     await this.waitForVisibleSelector(page, `${this.blockCartModal}[style*='display: block;']`);
 
-    if (proceedToCheckout) {
+    if (proceedToCheckout === true) {
       await this.waitForVisibleSelector(page, this.proceedToCheckoutButton);
       await this.clickAndWaitForURL(page, this.proceedToCheckoutButton);
       await this.waitForPageTitleToLoad(page);
-    } else {
+    }
+    if (proceedToCheckout === false) {
       await this.waitForSelectorAndClick(page, this.continueShoppingButton);
       await this.waitForHiddenSelector(page, this.continueShoppingButton);
     }
@@ -672,13 +925,76 @@ class Product extends FOBasePage {
   }
 
   /**
+   * Click social sharing link
+   * @param page {Page} Browser tab
+   * @param socialSharing {string} Social network's name to get link from
+   * @returns {Promise<Page>}
+   */
+  async clickOnSocialSharingLink(page: Page, socialSharing: string): Promise<Page> {
+    let selector;
+
+    switch (socialSharing) {
+      case 'Facebook':
+        selector = this.facebookSocialSharing;
+        break;
+
+      case 'Twitter':
+        selector = this.twitterSocialSharing;
+        break;
+
+      case 'Pinterest':
+        selector = this.pinterestSocialSharing;
+        break;
+
+      default:
+        throw new Error(`${socialSharing} was not found`);
+    }
+
+    return this.openLinkWithTargetBlank(page, selector, 'body', 'networkidle', false);
+  }
+
+  /**
    * Set quantity
    * @param page {Page} Browser tab
-   * @param quantity {number} Quantity to set
+   * @param quantity {number|string} Quantity to set
    * @returns {Promise<void>}
    */
-  async setQuantity(page: Page, quantity: number): Promise<void> {
-    await this.setValue(page, this.productQuantity, quantity.toString());
+  async setQuantity(page: Page, quantity: number | string): Promise<void> {
+    await this.setValue(page, this.productQuantity, quantity);
+  }
+
+  /**
+   * Click on add to cart button
+   * @param page {Page} Browser tab
+   * @returns {Promise<void>}
+   */
+  async clickOnAddToCartButton(page: Page): Promise<void> {
+    await this.waitForSelectorAndClick(page, this.addToCartButton);
+  }
+
+  /**
+   * Get product quantity
+   * @param page {Page} Browser tab
+   * @returns {Promise<number>}
+   */
+  async getProductQuantity(page: Page): Promise<number> {
+    return parseInt(await page.locator(this.productQuantity).evaluate((node: HTMLSelectElement) => node.value), 10);
+  }
+
+  /**
+   * Update quantity value arrow up down in quick view modal
+   * @param page {Page} Browser tab
+   * @param quantityWanted {number} Value to add/subtract from quantity
+   * @param direction {string} Direction to click on
+   * @returns {Promise<string>}
+   */
+  async setQuantityByArrowUpDown(page: Page, quantityWanted: number, direction: string): Promise<void> {
+    const inputValue = await this.getProductQuantity(page);
+    const nbClick: number = Math.abs(inputValue - quantityWanted);
+
+    for (let i = 0; i < nbClick; i++) {
+      await page.locator(this.productRowQuantityUpDownButton(direction)).click();
+    }
   }
 
   /**
@@ -730,7 +1046,7 @@ class Product extends FOBasePage {
    * @returns {Promise<boolean>}
    */
   async isCustomizationBlockVisible(page: Page): Promise<boolean> {
-    return this.elementVisible(page, 'div.product-container div.product-information section.product-customization', 1000);
+    return this.elementVisible(page, this.customizationBlock, 1000);
   }
 
   /**
@@ -787,7 +1103,7 @@ class Product extends FOBasePage {
    * @returns {Promise<boolean>}
    */
   async isAddToCartButtonEnabled(page: Page): Promise<boolean> {
-    return this.elementNotVisible(page, `${this.addToCartButton}:disabled`, 1000);
+    return this.elementNotVisible(page, `${this.addToCartButton}:disabled`, 3000);
   }
 
   /**
@@ -800,17 +1116,26 @@ class Product extends FOBasePage {
   }
 
   /**
+   * Click on the button "Add a review"
+   * @param page {Page} Browser tab
+   * @returns {Promise<boolean>}
+   */
+  async clickAddReviewButton(page: Page): Promise<void> {
+    if (await this.getNumberOfComments(page) !== 0) {
+      await page.locator(this.notEmptyReviewAddReviewButton).click();
+    } else {
+      await page.locator(this.emptyReviewAddReviewButton).click();
+    }
+  }
+
+  /**
    * Add a product review
    * @param page {Page} Browser tab
    * @param productReviewData {ProductReviewData} The content of the product review (title, content, rating)
    * @returns {Promise<boolean>}
    */
   async addProductReview(page: Page, productReviewData: ProductReviewData): Promise<boolean> {
-    if (await this.getNumberOfComments(page) !== 0) {
-      await page.locator(this.notEmptyReviewAddReviewButton).click();
-    } else {
-      await page.locator(this.emptyReviewAddReviewButton).click();
-    }
+    await this.clickAddReviewButton(page);
     await this.waitForVisibleSelector(page, this.productReviewModal);
     await this.setValue(page, this.reviewTitle, productReviewData.reviewTitle);
     await this.setValue(page, this.reviewTextContent, productReviewData.reviewContent);
@@ -818,6 +1143,34 @@ class Product extends FOBasePage {
     await page.locator(this.reviewSubmitButton).click();
     await page.locator(this.closeReviewSentConfirmationModalButton).click();
     return this.elementNotVisible(page, this.reviewSentConfirmationModal, 3000);
+  }
+
+  /**
+   * Close the product review modal
+   * @param page {Page} Browser tab
+   * @returns {Promise<boolean>}
+   */
+  async closeProductReviewModal(page: Page): Promise<boolean> {
+    await page.locator(this.reviewCancelButton).click();
+    return !(await this.elementNotVisible(page, this.productReviewModal, 3000));
+  }
+
+  /**
+   * Return if the GDPR field is present
+   * @param page {Page} Browser tab
+   * @returns {Promise<boolean>}
+   */
+  async hasProductReviewGDPRLabel(page: Page): Promise<boolean> {
+    return await page.locator(this.productReviewModalGDPRLabel).count() !== 0;
+  }
+
+  /**
+   * Return the label for the GDPR field
+   * @param page {Page} Browser tab
+   * @returns {Promise<string>}
+   */
+  async getProductReviewGDPRLabel(page: Page): Promise<string> {
+    return this.getTextContent(page, this.productReviewModalGDPRLabel);
   }
 
   /**
@@ -867,6 +1220,17 @@ class Product extends FOBasePage {
   async getWarningMessage(page: Page): Promise<string> {
     return this.getTextContent(page, this.warningMessage);
   }
+
+  /**
+   * Has products block
+   * @param blockName {'categoryproducts'} The block name in the page
+   * @param page {Page} Browser tab
+   * @return {Promise<boolean>}
+   */
+  async hasProductsBlock(page: Page, blockName: 'categoryproducts'): Promise<boolean> {
+    return (await page.locator(this.productsBlock(blockName)).count()) > 0;
+  }
 }
 
-export default new Product();
+const productPage = new Product();
+export {productPage, Product};
