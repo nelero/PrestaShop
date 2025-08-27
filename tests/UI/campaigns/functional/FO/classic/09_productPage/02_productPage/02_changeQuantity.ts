@@ -1,18 +1,16 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import pages
-import {homePage} from '@pages/FO/classic/home';
-import {productPage} from '@pages/FO/classic/product';
-import {blockCartModal} from '@pages/FO/classic/modal/blockCart';
-import {cartPage} from '@pages/FO/classic/cart';
-
-// Import data
-import Products from '@data/demo/products';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  type BrowserContext,
+  dataProducts,
+  foClassicCartPage,
+  foClassicHomePage,
+  foClassicModalBlockCartPage,
+  foClassicProductPage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_classic_productPage_productPage_changeQuantity';
 
@@ -29,113 +27,113 @@ describe('FO - Product page : Change quantity', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should go to FO home page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToFo', baseContext);
 
-    await homePage.goToFo(page);
+    await foClassicHomePage.goToFo(page);
 
-    const isHomePage = await homePage.isHomePage(page);
+    const isHomePage = await foClassicHomePage.isHomePage(page);
     expect(isHomePage).to.equal(true);
   });
 
   it('should go to the third product page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToProductPage', baseContext);
 
-    await homePage.goToProductPage(page, 3);
+    await foClassicHomePage.goToProductPage(page, 3);
 
-    const pageTitle = await productPage.getPageTitle(page);
-    expect(pageTitle.toUpperCase()).to.contains(Products.demo_6.name.toUpperCase());
+    const pageTitle = await foClassicProductPage.getPageTitle(page);
+    expect(pageTitle.toUpperCase()).to.contains(dataProducts.demo_6.name.toUpperCase());
   });
 
   it('should change the quantity by using the arrow \'UP\' button', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'incrementQuantity', baseContext);
 
-    await productPage.setQuantityByArrowUpDown(page, 5, 'up');
+    await foClassicProductPage.setQuantityByArrowUpDown(page, 5, 'up');
 
-    const productQuantity = await productPage.getProductQuantity(page);
+    const productQuantity = await foClassicProductPage.getProductQuantity(page);
     expect(productQuantity).to.equal(5);
   });
 
   it('should change the quantity by using the arrow \'Down\' button', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'incrementQuantity2', baseContext);
 
-    await productPage.setQuantityByArrowUpDown(page, 1, 'down');
+    await foClassicProductPage.setQuantityByArrowUpDown(page, 1, 'down');
 
-    const productQuantity = await productPage.getProductQuantity(page);
+    const productQuantity = await foClassicProductPage.getProductQuantity(page);
     expect(productQuantity).to.equal(1);
   });
 
   it('should add quantity of the product by setting input value', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'updateQuantityByInput', baseContext);
 
-    await productPage.setQuantity(page, 12);
-    await productPage.clickOnAddToCartButton(page);
+    await foClassicProductPage.setQuantity(page, 12);
+    await foClassicProductPage.clickOnAddToCartButton(page);
 
-    const isVisible = await blockCartModal.isBlockCartModalVisible(page);
+    const isVisible = await foClassicModalBlockCartPage.isBlockCartModalVisible(page);
     expect(isVisible).to.equal(true);
   });
 
   it('should click on continue shopping and check that the modal is not visible', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'clickOnContinueShopping', baseContext);
 
-    const isNotVisible = await blockCartModal.continueShopping(page);
+    const isNotVisible = await foClassicModalBlockCartPage.continueShopping(page);
     expect(isNotVisible).to.equal(true);
   });
 
   it('should check the cart notifications number', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkNotificationsNumber', baseContext);
 
-    const notificationsNumber = await productPage.getCartNotificationsNumber(page);
+    const notificationsNumber = await foClassicProductPage.getCartNotificationsNumber(page);
     expect(notificationsNumber).to.equal(12);
   });
 
   it('should set \'-24\' in the quantity input', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'updateQuantityByInput2', baseContext);
 
-    await productPage.setQuantity(page, '-24');
-    await productPage.clickOnAddToCartButton(page);
+    await foClassicProductPage.setQuantity(page, '-24');
+    await foClassicProductPage.clickOnAddToCartButton(page);
 
-    const isVisible = await blockCartModal.isBlockCartModalVisible(page);
+    const isVisible = await foClassicModalBlockCartPage.isBlockCartModalVisible(page);
     expect(isVisible).to.equal(true);
   });
 
   it('should click on continue shopping and check that the modal is not visible', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'clickOnContinueShopping2', baseContext);
 
-    const isNotVisible = await blockCartModal.continueShopping(page);
+    const isNotVisible = await foClassicModalBlockCartPage.continueShopping(page);
     expect(isNotVisible).to.equal(true);
   });
 
   it('should check the cart notifications number', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkNotificationsNumber2', baseContext);
 
-    const notificationsNumber = await homePage.getCartNotificationsNumber(page);
+    const notificationsNumber = await foClassicHomePage.getCartNotificationsNumber(page);
     expect(notificationsNumber).to.equal(13);
   });
 
   it('should set \'Prestashop\' in the quantity input and proceed to checkout', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'updateQuantityByInput3', baseContext);
 
-    await productPage.addProductToTheCart(page, 'Prestashop');
+    await foClassicProductPage.addProductToTheCart(page, 'Prestashop');
 
-    const notificationsNumber = await homePage.getCartNotificationsNumber(page);
+    const notificationsNumber = await foClassicHomePage.getCartNotificationsNumber(page);
     expect(notificationsNumber).to.equal(14);
   });
 
   it('should remove product from shopping cart', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'removeProduct', baseContext);
 
-    await cartPage.deleteProduct(page, 1);
+    await foClassicCartPage.deleteProduct(page, 1);
 
-    const notificationNumber = await cartPage.getCartNotificationsNumber(page);
+    const notificationNumber = await foClassicCartPage.getCartNotificationsNumber(page);
     expect(notificationNumber).to.equal(0);
   });
 });

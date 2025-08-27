@@ -49,6 +49,9 @@ import TextWithLengthCounter from '@components/form/text-with-length-counter';
 import TinyMCEEditor from '@js/components/tinymce-editor';
 import TranslatableField from '@js/components/translatable-field';
 import TranslatableInput from '@js/components/translatable-input';
+import EntitySearchInput from '@js/components/entity-search-input';
+import MultipleZoneChoice from '@js/components/form/multiple-zone-choice';
+import ToggleChildrenChoice from '@js/components/form/toggle-children-choice';
 
 // Grid extensions
 import AsyncToggleColumnExtension from '@components/grid/extension/column/common/async-toggle-column-extension';
@@ -71,6 +74,7 @@ import AjaxBulkActionExtension from '@components/grid/extension/ajax-bulk-action
 import SubmitGridActionExtension from '@components/grid/extension/submit-grid-action-extension';
 import SubmitRowActionExtension from '@components/grid/extension/action/row/submit-row-action-extension';
 import FormFieldToggler from '@components/form/form-field-toggler';
+import EmailInput from '@components/email-input';
 
 const GridExtensions = {
   AjaxBulkActionExtension,
@@ -160,6 +164,10 @@ const initPrestashopComponents = (): void => {
     TinyMCEEditor,
     TranslatableField,
     TranslatableInput,
+    EntitySearchInput,
+    EmailInput,
+    MultipleZoneChoice,
+    ToggleChildrenChoice,
   };
 };
 export default initPrestashopComponents;

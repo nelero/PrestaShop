@@ -28,9 +28,6 @@ use PrestaShop\PrestaShop\Core\Addon\Theme\Theme;
 use PrestaShop\PrestaShop\Core\Addon\Theme\ThemeManagerBuilder;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
 
-/**
- * @since 1.5.0
- */
 class ShopCore extends ObjectModel
 {
     /** @var int ID of shop group */
@@ -81,15 +78,18 @@ class ShopCore extends ObjectModel
             'active' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
             'deleted' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
             'name' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 64],
-            'color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor'],
+            'color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor', 'size' => 50],
             'id_category' => ['type' => self::TYPE_INT, 'required' => true],
-            'theme_name' => ['type' => self::TYPE_STRING, 'validate' => 'isThemeName'],
+            'theme_name' => ['type' => self::TYPE_STRING, 'validate' => 'isThemeName', 'size' => 255],
             'id_shop_group' => ['type' => self::TYPE_INT, 'required' => true],
         ],
     ];
 
     /** @var array|null List of shops cached */
     protected static $shops;
+
+    /** @var array|null List of shop group IDs cached */
+    protected static $shopGroupIds = null;
 
     protected static $asso_tables = [];
     protected static $id_shop_default_tables = [];
@@ -904,6 +904,32 @@ class ShopCore extends ObjectModel
     }
 
     /**
+     * Dedicated method to get the shop group ID based on a shop ID, because getGroupFromShop is based on a cache dependent
+     * of the Context->employee which can cause unexpected behaviour.
+     *
+     * @param int $shopId
+     *
+     * @return int|null
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public static function getGroupIdFromShopId(int $shopId): ?int
+    {
+        if (null === self::$shopGroupIds) {
+            self::$shopGroupIds = [];
+            $sql = 'SELECT s.id_shop, s.id_shop_group FROM ' . _DB_PREFIX_ . 'shop s';
+            if ($results = Db::getInstance()->executeS($sql)) {
+                foreach ($results as $shop) {
+                    self::$shopGroupIds[(int) $shop['id_shop']] = (int) $shop['id_shop_group'];
+                }
+            }
+        }
+
+        return self::$shopGroupIds[(int) $shopId] ?? null;
+    }
+
+    /**
      * If the shop group has the option $type activated, get all shops ID of this group, else get current shop ID.
      *
      * @param int $shop_id
@@ -986,7 +1012,7 @@ class ShopCore extends ObjectModel
                 break;
             case self::CONTEXT_SHOP:
                 self::$context_id_shop = (int) $id;
-                self::$context_id_shop_group = Shop::getGroupFromShop($id);
+                self::$context_id_shop_group = Shop::getGroupIdFromShopId($id);
 
                 break;
             default:
@@ -1010,6 +1036,7 @@ class ShopCore extends ObjectModel
     {
         parent::resetStaticCache();
         static::$shops = null;
+        static::$shopGroupIds = null;
         static::$feature_active = null;
         static::$context_shop_group = null;
         Cache::clean('Shop::*');

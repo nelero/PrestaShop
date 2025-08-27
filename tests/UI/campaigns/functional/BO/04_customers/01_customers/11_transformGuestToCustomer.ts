@@ -1,34 +1,30 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import mailHelper from '@utils/mailHelper';
 
 // Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
 import {createOrderByGuestTest} from '@commonTests/FO/classic/order';
 import {deleteCustomerTest} from '@commonTests/BO/customers/customer';
 import {setupSmtpConfigTest, resetSmtpConfigTest} from '@commonTests/BO/advancedParameters/smtp';
 
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import customersPage from '@pages/BO/customers';
-import viewCustomerPage from '@pages/BO/customers/view';
-
-// Import data
-import Products from '@data/demo/products';
-import OrderData from '@data/faker/order';
-
 import {
-  // Import data
+  boCustomersPage,
+  boCustomersViewPage,
+  boDashboardPage,
+  boLoginPage,
+  type BrowserContext,
   dataPaymentMethods,
+  dataProducts,
   FakerAddress,
   FakerCustomer,
+  FakerOrder,
+  type MailDev,
+  type MailDevEmail,
+  type Page,
+  utilsMail,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
 
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
-import MailDevEmail from '@data/types/maildevEmail';
-import MailDev from 'maildev';
 
 const baseContext = 'functional_BO_customers_customers_transformGuestToCustomer';
 
@@ -42,11 +38,11 @@ describe('BO - Customers _ Customers : Transform guest to customer account', asy
   const customerData: FakerCustomer = new FakerCustomer({password: ''});
   const addressData: FakerAddress = new FakerAddress({country: 'France'});
 
-  const orderData: OrderData = new OrderData({
+  const orderData: FakerOrder = new FakerOrder({
     customer: customerData,
     products: [
       {
-        product: Products.demo_1,
+        product: dataProducts.demo_1,
         quantity: 1,
       },
     ],
@@ -62,12 +58,12 @@ describe('BO - Customers _ Customers : Transform guest to customer account', asy
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
     // Start listening to maildev server
-    mailListener = mailHelper.createMailListener();
-    mailHelper.startListener(mailListener);
+    mailListener = utilsMail.createMailListener();
+    utilsMail.startListener(mailListener);
 
     // Handle every new email
     mailListener.on('new', (email: MailDevEmail) => {
@@ -76,62 +72,68 @@ describe('BO - Customers _ Customers : Transform guest to customer account', asy
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
     // Stop listening to maildev server
-    mailHelper.stopListener(mailListener);
+    utilsMail.stopListener(mailListener);
   });
 
   describe('Transform a guest to customer account', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Customers > Customers\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCustomersPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.customersParentLink,
-        dashboardPage.customersLink,
+        boDashboardPage.customersParentLink,
+        boDashboardPage.customersLink,
       );
-      await customersPage.closeSfToolBar(page);
+      await boCustomersPage.closeSfToolBar(page);
 
-      const pageTitle = await customersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(customersPage.pageTitle);
+      const pageTitle = await boCustomersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomersPage.pageTitle);
     });
 
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetAllFilter', baseContext);
 
-      numberOfCustomers = await customersPage.resetAndGetNumberOfLines(page);
+      numberOfCustomers = await boCustomersPage.resetAndGetNumberOfLines(page);
       expect(numberOfCustomers).to.be.above(1);
     });
 
     it('should filter customers group by guest', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterCustomer', baseContext);
 
-      await customersPage.resetFilter(page);
-      await customersPage.filterCustomers(page, 'input', 'default_group', 'Guest');
+      await boCustomersPage.resetFilter(page);
+      await boCustomersPage.filterCustomers(page, 'input', 'default_group', 'Guest');
 
-      const textEmail = await customersPage.getTextColumnFromTableCustomers(page, 1, 'default_group');
+      const textEmail = await boCustomersPage.getTextColumnFromTableCustomers(page, 1, 'default_group');
       expect(textEmail).to.eq('Guest');
     });
 
     it('should go to view customer page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToViewPage', baseContext);
 
-      await customersPage.goToViewCustomerPage(page, 1);
+      await boCustomersPage.goToViewCustomerPage(page, 1);
 
-      const pageTitle = await viewCustomerPage.getPageTitle(page);
-      expect(pageTitle).to.contains(viewCustomerPage.pageTitle(`${customerData.firstName[0]}. ${customerData.lastName}`));
+      const pageTitle = await boCustomersViewPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomersViewPage.pageTitle(`${customerData.firstName[0]}. ${customerData.lastName}`));
     });
 
     it('should click on transform to customer account', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnTransferToCustomerAccount', baseContext);
 
-      const successMessage = await viewCustomerPage.clickOnTransformToCustomerAccount(page);
-      expect(successMessage).to.contains(viewCustomerPage.successfulCreationMessage);
+      const successMessage = await boCustomersViewPage.clickOnTransformToCustomerAccount(page);
+      expect(successMessage).to.contains(boCustomersViewPage.successfulCreationMessage);
     });
 
     it('should check if the mail is in mailbox and check the subject', async function () {
@@ -143,32 +145,32 @@ describe('BO - Customers _ Customers : Transform guest to customer account', asy
     it('should check the transform to customer account button is not visible', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'isButtonVisible', baseContext);
 
-      const isButtonVisible = await viewCustomerPage.isTransformToCustomerAccountButtonVisible(page);
+      const isButtonVisible = await boCustomersViewPage.isTransformToCustomerAccountButtonVisible(page);
       expect(isButtonVisible).to.eq(false);
     });
 
     it('should go back to Customers page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToCustomersPage', baseContext);
 
-      await dashboardPage.goToSubMenu(page, dashboardPage.customersParentLink, dashboardPage.customersLink);
+      await boDashboardPage.goToSubMenu(page, boDashboardPage.customersParentLink, boDashboardPage.customersLink);
 
-      const pageTitle = await customersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(customersPage.pageTitle);
+      const pageTitle = await boCustomersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomersPage.pageTitle);
     });
 
     it('should check that the customers table is empty', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkNoRecordFound', baseContext);
 
-      const noRecordsFoundText = await customersPage.getTextWhenTableIsEmpty(page);
+      const noRecordsFoundText = await boCustomersPage.getTextWhenTableIsEmpty(page);
       expect(noRecordsFoundText).to.contains('No records found');
     });
 
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilter', baseContext);
 
-      await customersPage.resetFilter(page);
+      await boCustomersPage.resetFilter(page);
 
-      const numberOfCustomers = await customersPage.resetAndGetNumberOfLines(page);
+      const numberOfCustomers = await boCustomersPage.resetAndGetNumberOfLines(page);
       expect(numberOfCustomers).to.be.at.least(0);
     });
   });

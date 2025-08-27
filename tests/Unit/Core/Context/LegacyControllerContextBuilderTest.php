@@ -28,17 +28,21 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Core\Context;
 
+use Doctrine\ORM\NoResultException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use PrestaShop\PrestaShop\Adapter\ContextStateManager;
 use PrestaShop\PrestaShop\Core\Context\Employee;
 use PrestaShop\PrestaShop\Core\Context\EmployeeContext;
+use PrestaShop\PrestaShop\Core\Context\LanguageContext;
 use PrestaShop\PrestaShop\Core\Context\LegacyControllerContextBuilder;
+use PrestaShop\PrestaShop\Core\Context\ShopContext;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
-use PrestaShop\PrestaShop\Core\Exception\InvalidArgumentException;
 use PrestaShopBundle\Entity\Repository\TabRepository;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Tests\Unit\Core\Configuration\MockConfigurationTrait;
+use Twig\Environment;
 
 class LegacyControllerContextBuilderTest extends TestCase
 {
@@ -58,10 +62,16 @@ class LegacyControllerContextBuilderTest extends TestCase
     {
         $builder = new LegacyControllerContextBuilder(
             $this->mockEmployeeContext(),
-            $this->createMock(ContextStateManager::class),
             ['AdminCarts'],
             $this->mockTabRepository(),
             $this->createMock(ContainerInterface::class),
+            $this->mockConfiguration(),
+            $this->mockRequestStack(true),
+            $this->createMock(ShopContext::class),
+            $this->createMock(LanguageContext::class),
+            'admin-dev',
+            '9.0.0',
+            $this->createMock(Environment::class),
         );
 
         $builder->setControllerName($controllerName);
@@ -78,6 +88,7 @@ class LegacyControllerContextBuilderTest extends TestCase
         $this->assertEquals($multishopContext, $legacyController->multishop_context);
         $this->assertEquals($expectedCurrentIndex, $legacyController->currentIndex);
         $this->assertEquals($expectedTable, $legacyController->table);
+        $this->assertTrue($legacyController->ajax);
     }
 
     public function getControllerValues(): iterable
@@ -185,17 +196,37 @@ class LegacyControllerContextBuilderTest extends TestCase
 
     public function testNoControllerName(): void
     {
+        $tabRepository = $this->createMock(TabRepository::class);
+        $tabRepository
+            ->method('getIdByClassName')
+            ->willThrowException(new NoResultException())
+        ;
         $builder = new LegacyControllerContextBuilder(
             $this->mockEmployeeContext(),
-            $this->createMock(ContextStateManager::class),
             ['AdminCarts'],
-            $this->mockTabRepository(),
+            $tabRepository,
             $this->createMock(ContainerInterface::class),
+            $this->mockConfiguration(),
+            $this->mockRequestStack(false),
+            $this->createMock(ShopContext::class),
+            $this->createMock(LanguageContext::class),
+            'admin-dev',
+            '9.0.0',
+            $this->createMock(Environment::class),
         );
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/Cannot build Controller context as no controllerName has been defined/');
-        $builder->build();
+        // We don't call setControllerName so the builder falls back on AdminNotFound
+        $legacyController = $builder->build();
+
+        $this->assertEquals('NotFound', $legacyController->className);
+        $this->assertEquals('admin', $legacyController->controller_type);
+        $this->assertEquals('AdminNotFound', $legacyController->php_self);
+        $this->assertEquals('AdminNotFound', $legacyController->controller_name);
+        $this->assertEquals(-1, $legacyController->id);
+        $this->assertEquals(ShopConstraint::ALL_SHOPS | ShopConstraint::SHOP_GROUP | ShopConstraint::SHOP, $legacyController->multishop_context);
+        $this->assertEquals('index.php', $legacyController->currentIndex);
+        $this->assertEquals('configuration', $legacyController->table);
+        $this->assertFalse($legacyController->ajax);
     }
 
     private function mockTabRepository(): TabRepository|MockObject
@@ -221,5 +252,16 @@ class LegacyControllerContextBuilderTest extends TestCase
             ->willReturn($employee);
 
         return $employeeContext;
+    }
+
+    private function mockRequestStack(bool $ajax): RequestStack|MockObject
+    {
+        $request = $this->createMock(Request::class);
+        $request->method('get')->willReturn($ajax);
+
+        $requestStack = $this->createMock(RequestStack::class);
+        $requestStack->method('getCurrentRequest')->willReturn($request);
+
+        return $requestStack;
     }
 }

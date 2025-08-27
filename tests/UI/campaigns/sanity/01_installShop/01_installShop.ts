@@ -1,13 +1,13 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import pages
-import installPage from '@pages/install';
-import {homePage} from '@pages/FO/classic/home';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  type BrowserContext,
+  foClassicHomePage,
+  installPage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'sanity_installShop_installShop';
 
@@ -17,12 +17,12 @@ describe('Install Prestashop', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   // Steps
@@ -193,7 +193,7 @@ describe('Install Prestashop', async () => {
         {
           step: {
             name: 'Post installation scripts',
-            timeout: 60000,
+            timeout: 120000,
           },
         },
     },
@@ -227,7 +227,7 @@ describe('Install Prestashop', async () => {
 
     page = await installPage.goToFOAfterInstall(page);
 
-    const result = await homePage.isHomePage(page);
+    const result = await foClassicHomePage.isHomePage(page);
     expect(result).to.eq(true);
   });
 });

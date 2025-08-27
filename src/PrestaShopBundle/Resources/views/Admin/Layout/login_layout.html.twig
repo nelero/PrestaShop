@@ -1,4 +1,4 @@
-{#**
+{# **
  * Copyright since 2007 PrestaShop SA and Contributors
  * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
  *
@@ -21,7 +21,7 @@
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
  * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
- *#}
+ * #}
 <!DOCTYPE html>
 <!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7 lt-ie6"> <![endif]-->
 <!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8 ie7"> <![endif]-->
@@ -34,21 +34,22 @@
   {% block javascrips %}{% endblock %}
   {% block stylesheets %}{% endblock %}
 </head>
-<body class="lang-{{ ps.isoUser }}{% if ps.isRtlLanguage %} lang-rtl{% endif %} ps_back-office bootstrap">
+
+<body class="lang-{{ ps.isoUser }}{% if ps.isRtlLanguage %} lang-rtl{% endif %} ps_back-office bootstrap ps-bo-rebrand">
   <div id="login">
     <div id="content">
       <div id="login-panel">
         <div id="login-header">
-          <h1 class="text-center">
-            <img id="logo" src="{{ ps.baseImgUrl }}prestashop@2x.png" width="123px" height="24px" alt="PrestaShop" />
+          <h1 class="text-center mb-0">
+            <img id="logo" src="{{ ps.baseImgUrl }}prestashop@2x.png" width="128" height="auto" alt="PrestaShop" />
           </h1>
         </div>
 
-        <div id="shop-img">
-          <img src="{{ ps.baseImgUrl }}preston-login@2x.png" alt="{$shop_name}" width="69.5px" height="118.5px" />
-        </div>
-
         <div id="login-content-card" class="card">
+          <div id="shop-img">
+            <img src="{{ ps.baseImgUrl }}prestashop@2x.png" alt="{{ shopName }}" width="200" height="22" />
+          </div>
+
           <div class="card-body">
             {% block session_alert %}
               {% macro alert(type, flashbagContent) %}
@@ -99,23 +100,26 @@
           <span class="login-back-shop">{{ shopName }}</span>
         </a>
 
+        {{ renderhook('displayAdminLogin') }}
+
         <div id="login-footer">
-          <p class="text-center text-muted">
+          <div class="login__copy text-center text-muted">
             <a href="https://www.prestashop-project.org" onclick="return !window.open(this.href);">
-              &copy; PrestaShop&#8482; 2007-{{ "now"|date("Y") }} - All rights reserved
+              &copy; PrestaShop&#8482; 2007-{{ 'now'|date('Y') }} - All rights reserved
             </a>
-          </p>
-          <p class="text-center">
-            <a class="link-social link-twitter _blank" href="https://twitter.com/PrestaShop" title="Twitter">
-              Twitter
+          </div>
+
+          <div class="login__social text-center">
+            <a class="link-social link-twitter _blank" target="_blank" href="https://x.com/PrestaShop" title="X">
+              <twig:ux:icon name="bi:twitter-x" height="16" width="16" aria-hidden="true"/>
             </a>
-            <a class="link-social link-facebook _blank" href="https://www.facebook.com/prestashop" title="Facebook">
-              Facebook
+            <a class="link-social link-facebook _blank" target="_blank" href="https://www.facebook.com/prestashop" title="Facebook">
+              <twig:ux:icon name="bi:facebook" height="16" width="16" aria-hidden="true"/>
             </a>
-            <a class="link-social link-github _blank" href="https://github.com/PrestaShop/PrestaShop" title="Github">
-              GitHub
+            <a class="link-social link-github _blank" target="_blank" href="https://github.com/PrestaShop/PrestaShop" title="Github">
+              <twig:ux:icon name="bi:github" height="16" width="16" aria-hidden="true"/>
             </a>
-          </p>
+          </div>
         </div>
       </div>
     </div>

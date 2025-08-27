@@ -1,15 +1,15 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import FO pages
-import {cartPage} from '@pages/FO/classic/cart';
-import {homePage as foHomePage, homePage} from '@pages/FO/classic/home';
-import {quickViewModal} from '@pages/FO/classic/modal/quickView';
-import {blockCartModal} from '@pages/FO/classic/modal/blockCart';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  type BrowserContext,
+  foClassicCartPage,
+  foClassicHomePage,
+  foClassicModalBlockCartPage,
+  foClassicModalQuickViewPage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_classic_cart_cart_deleteProduct';
 
@@ -18,70 +18,70 @@ describe('FO - cart : Delete product', async () => {
   let page: Page;
 
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should go to FO', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToFo', baseContext);
 
-    await homePage.goToFo(page);
-    await homePage.changeLanguage(page, 'en');
+    await foClassicHomePage.goToFo(page);
+    await foClassicHomePage.changeLanguage(page, 'en');
 
-    const isHomePage = await homePage.isHomePage(page);
+    const isHomePage = await foClassicHomePage.isHomePage(page);
     expect(isHomePage, 'Fail to open FO home page').to.eq(true);
   });
 
   it('should add the first product to cart and proceed to checkout', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'addFirstProductToCart', baseContext);
 
-    await homePage.quickViewProduct(page, 1);
-    await quickViewModal.addToCartByQuickView(page);
-    await blockCartModal.proceedToCheckout(page);
+    await foClassicHomePage.quickViewProduct(page, 1);
+    await foClassicModalQuickViewPage.addToCartByQuickView(page);
+    await foClassicModalBlockCartPage.proceedToCheckout(page);
 
-    const pageTitle = await cartPage.getPageTitle(page);
-    expect(pageTitle).to.eq(cartPage.pageTitle);
+    const pageTitle = await foClassicCartPage.getPageTitle(page);
+    expect(pageTitle).to.eq(foClassicCartPage.pageTitle);
   });
 
   it('should set the quantity 0 in the input', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'setQuantity0', baseContext);
 
-    await cartPage.editProductQuantity(page, 1, 0);
+    await foClassicCartPage.editProductQuantity(page, 1, 0);
 
-    const notificationsNumber = await cartPage.getCartNotificationsNumber(page);
+    const notificationsNumber = await foClassicCartPage.getCartNotificationsNumber(page);
     expect(notificationsNumber).to.be.eq(0);
   });
 
   it('should go to home page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToHomePage', baseContext);
 
-    await cartPage.goToHomePage(page);
+    await foClassicCartPage.goToHomePage(page);
 
-    const result = await foHomePage.isHomePage(page);
+    const result = await foClassicHomePage.isHomePage(page);
     expect(result).to.eq(true);
   });
 
   it('should add the first product to cart and proceed to checkout', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'addFirstProductToCart1', baseContext);
 
-    await homePage.quickViewProduct(page, 1);
-    await quickViewModal.addToCartByQuickView(page);
-    await blockCartModal.proceedToCheckout(page);
+    await foClassicHomePage.quickViewProduct(page, 1);
+    await foClassicModalQuickViewPage.addToCartByQuickView(page);
+    await foClassicModalBlockCartPage.proceedToCheckout(page);
 
-    const pageTitle = await cartPage.getPageTitle(page);
-    expect(pageTitle).to.eq(cartPage.pageTitle);
+    const pageTitle = await foClassicCartPage.getPageTitle(page);
+    expect(pageTitle).to.eq(foClassicCartPage.pageTitle);
   });
 
   it('should delete the product', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'deleteProduct', baseContext);
 
-    await cartPage.deleteProduct(page, 1);
+    await foClassicCartPage.deleteProduct(page, 1);
 
-    const notificationNumber = await cartPage.getCartNotificationsNumber(page);
+    const notificationNumber = await foClassicCartPage.getCartNotificationsNumber(page);
     expect(notificationNumber).to.be.equal(0);
   });
 });

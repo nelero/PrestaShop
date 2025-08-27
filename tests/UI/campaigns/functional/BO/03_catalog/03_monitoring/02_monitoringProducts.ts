@@ -1,22 +1,18 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-import dashboardPage from '@pages/BO/dashboard';
-import productsPage from '@pages/BO/catalog/products';
-import addProductPage from '@pages/BO/catalog/products/add';
-import combinationsTab from '@pages/BO/catalog/products/add/combinationsTab';
-import monitoringPage from '@pages/BO/catalog/monitoring';
-
-// Import data
-import ProductData from '@data/faker/product';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  boDashboardPage,
+  boLoginPage,
+  boMonitoringPage,
+  boProductsPage,
+  boProductsCreatePage,
+  boProductsCreateTabCombinationsPage,
+  type BrowserContext,
+  FakerProduct,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_catalog_monitoring_monitoringProducts';
 
@@ -31,25 +27,31 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
   let numberOfProducts: number = 0;
   let numberOfProductsIngrid: number = 0;
 
-  const productWithoutImage: ProductData = new ProductData({type: 'standard'});
-  const disabledProduct: ProductData = new ProductData({type: 'standard', status: false});
-  const productWithoutCombinationsWithoutQuantity: ProductData = new ProductData({type: 'standard', quantity: 0});
-  const productWithCombinationsWithoutQuantity: ProductData = new ProductData({type: 'combinations', quantity: 0});
-  const productWithoutPrice: ProductData = new ProductData({type: 'standard', price: 0});
-  const productWithoutDescription: ProductData = new ProductData({type: 'standard', description: '', summary: ''});
+  const productWithoutImage: FakerProduct = new FakerProduct({type: 'standard'});
+  const disabledProduct: FakerProduct = new FakerProduct({type: 'standard', status: false});
+  const productWithoutCombinationsWithoutQuantity: FakerProduct = new FakerProduct({type: 'standard', quantity: 0});
+  const productWithCombinationsWithoutQuantity: FakerProduct = new FakerProduct({type: 'combinations', quantity: 0});
+  const productWithoutPrice: FakerProduct = new FakerProduct({type: 'standard', price: 0});
+  const productWithoutDescription: FakerProduct = new FakerProduct({type: 'standard', description: '', summary: ''});
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   [
@@ -89,68 +91,68 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
       productToCreate: productWithoutDescription,
       gridName: 'product_without_description',
     },
-  ].forEach((test: {testIdentifier: string, productType: string, productToCreate: ProductData, gridName: string}) => {
+  ].forEach((test: {testIdentifier: string, productType: string, productToCreate: FakerProduct, gridName: string}) => {
     describe(`Create product ${test.productType} in BO`, async () => {
       it('should go to \'Catalog > Products\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.testIdentifier}_goToProductsPage`, baseContext);
 
-        await dashboardPage.goToSubMenu(
+        await boDashboardPage.goToSubMenu(
           page,
-          dashboardPage.catalogParentLink,
-          dashboardPage.productsLink,
+          boDashboardPage.catalogParentLink,
+          boDashboardPage.productsLink,
         );
-        await productsPage.closeSfToolBar(page);
+        await boProductsPage.closeSfToolBar(page);
 
-        const pageTitle = await productsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(productsPage.pageTitle);
+        const pageTitle = await boProductsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsPage.pageTitle);
       });
 
       it('should reset filter and get number of products', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.testIdentifier}_getNumberOfProduct`, baseContext);
 
-        numberOfProducts = await productsPage.resetAndGetNumberOfLines(page);
+        numberOfProducts = await boProductsPage.resetAndGetNumberOfLines(page);
         expect(numberOfProducts).to.be.above(0);
       });
 
       it('should click on \'New product\' button and check new product modal', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.testIdentifier}_clickNewProductBtn`, baseContext);
 
-        const isModalVisible = await productsPage.clickOnNewProductButton(page);
+        const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
         expect(isModalVisible).to.be.equal(true);
       });
 
       it('should choose the type of product', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.testIdentifier}_chooseTypeOfProduct`, baseContext);
 
-        await productsPage.selectProductType(page, test.productToCreate.type);
+        await boProductsPage.selectProductType(page, test.productToCreate.type);
 
-        const pageTitle = await addProductPage.getPageTitle(page);
-        expect(pageTitle).to.contains(addProductPage.pageTitle);
+        const pageTitle = await boProductsCreatePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
       });
 
       it('should go to new product page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.testIdentifier}_goToNewProductPage`, baseContext);
 
-        await productsPage.clickOnAddNewProduct(page);
+        await boProductsPage.clickOnAddNewProduct(page);
 
-        const pageTitle = await addProductPage.getPageTitle(page);
-        expect(pageTitle).to.contains(addProductPage.pageTitle);
+        const pageTitle = await boProductsCreatePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
       });
 
       it('should create product', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.testIdentifier}_createNewProduct`, baseContext);
 
-        await addProductPage.closeSfToolBar(page);
+        await boProductsCreatePage.closeSfToolBar(page);
 
-        const createProductMessage = await addProductPage.setProduct(page, test.productToCreate);
-        expect(createProductMessage).to.equal(addProductPage.successfulUpdateMessage);
+        const createProductMessage = await boProductsCreatePage.setProduct(page, test.productToCreate);
+        expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
       });
 
       if (test.productToCreate.type === 'combinations') {
         it('should create combinations and check generate combinations button', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'createCombinations', baseContext);
 
-          const generateCombinationsButton = await combinationsTab.setProductAttributes(
+          const generateCombinationsButton = await boProductsCreateTabCombinationsPage.setProductAttributes(
             page,
             test.productToCreate.attributes,
           );
@@ -160,14 +162,14 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
         it('should click on generate combinations button', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'generateCombinations', baseContext);
 
-          const successMessage = await combinationsTab.generateCombinations(page);
+          const successMessage = await boProductsCreateTabCombinationsPage.generateCombinations(page);
           expect(successMessage).to.equal('Successfully generated 4 combinations.');
         });
 
         it('should check that combinations generation modal is closed', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'generateCombinationsModalIsClosed', baseContext);
 
-          const isModalClosed = await combinationsTab.generateCombinationModalIsClosed(page);
+          const isModalClosed = await boProductsCreateTabCombinationsPage.generateCombinationModalIsClosed(page);
           expect(isModalClosed).to.be.equal(true);
         });
       }
@@ -182,16 +184,16 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
           baseContext,
         );
 
-        await addProductPage.goToSubMenu(
+        await boProductsCreatePage.goToSubMenu(
           page,
-          addProductPage.catalogParentLink,
-          addProductPage.monitoringLink,
+          boProductsCreatePage.catalogParentLink,
+          boProductsCreatePage.monitoringLink,
         );
 
-        const pageTitle = await monitoringPage.getPageTitle(page);
-        expect(pageTitle).to.contains(monitoringPage.pageTitle);
+        const pageTitle = await boMonitoringPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boMonitoringPage.pageTitle);
 
-        numberOfProductsIngrid = await monitoringPage.resetAndGetNumberOfLines(
+        numberOfProductsIngrid = await boMonitoringPage.resetAndGetNumberOfLines(
           page,
           test.gridName,
         );
@@ -206,7 +208,7 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
           baseContext,
         );
 
-        await monitoringPage.filterTable(
+        await boMonitoringPage.filterTable(
           page,
           test.gridName,
           'input',
@@ -214,7 +216,7 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
           test.productToCreate.name,
         );
 
-        const textColumn = await monitoringPage.getTextColumnFromTable(
+        const textColumn = await boMonitoringPage.getTextColumnFromTable(
           page,
           test.gridName,
           1,
@@ -231,7 +233,7 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
           baseContext,
         );
 
-        numberOfProductsIngrid = await monitoringPage.resetAndGetNumberOfLines(page, test.gridName);
+        numberOfProductsIngrid = await boMonitoringPage.resetAndGetNumberOfLines(page, test.gridName);
         expect(numberOfProductsIngrid).to.be.at.least(1);
       });
     });
@@ -245,7 +247,7 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
           baseContext,
         );
 
-        await monitoringPage.filterTable(
+        await boMonitoringPage.filterTable(
           page,
           test.gridName,
           'input',
@@ -253,7 +255,7 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
           test.productToCreate.name,
         );
 
-        const textColumn = await monitoringPage.getTextColumnFromTable(
+        const textColumn = await boMonitoringPage.getTextColumnFromTable(
           page,
           test.gridName,
           1,
@@ -270,11 +272,11 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
           baseContext,
         );
 
-        const textResult = await monitoringPage.deleteProductInGrid(page, test.gridName, 1);
-        expect(textResult).to.equal(productsPage.successfulDeleteMessage);
+        const textResult = await boMonitoringPage.deleteProductInGrid(page, test.gridName, 1);
+        expect(textResult).to.equal(boProductsPage.successfulDeleteMessage);
 
-        const pageTitle = await productsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(productsPage.pageTitle);
+        const pageTitle = await boProductsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsPage.pageTitle);
       });
 
       it('should reset filter check number of products', async function () {
@@ -285,7 +287,7 @@ describe('BO - Catalog - Monitoring : Create different products and delete them 
           baseContext,
         );
 
-        const numberOfProductsAfterDelete = await productsPage.resetAndGetNumberOfLines(page);
+        const numberOfProductsAfterDelete = await boProductsPage.resetAndGetNumberOfLines(page);
         expect(numberOfProductsAfterDelete).to.be.equal(numberOfProducts);
       });
     });

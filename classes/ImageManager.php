@@ -28,8 +28,6 @@
  * Class ImageManagerCore.
  *
  * This class includes functions for image manipulation
- *
- * @since 1.5.0
  */
 class ImageManagerCore
 {
@@ -307,8 +305,13 @@ class ImageManagerCore
         $destImage = imagecreatetruecolor($destinationWidth, $destinationHeight);
 
         // If the output is PNG, fill with transparency. Else fill with white background.
-        if ($destinationFileType == 'png' || $destinationFileType == 'webp' || $destinationFileType == 'avif') {
-            imagealphablending($destImage, false);
+        if (in_array($destinationFileType, ['png', 'webp', 'avif'])) {
+            // if png color type is 3, the file is paletted (256 colors or less). Change palette to reduce file size
+            if ($destinationFileType == 'png' && $sourceFileType == IMAGETYPE_PNG && self::getPNGColorType($sourceFile) == 3) {
+                imagetruecolortopalette($destImage, false, 255);
+            } else {
+                imagealphablending($destImage, false);
+            }
             imagesavealpha($destImage, true);
             $transparent = imagecolorallocatealpha($destImage, 255, 255, 255, 127);
             imagefilledrectangle($destImage, 0, 0, $destinationWidth, $destinationHeight, $transparent);
@@ -597,7 +600,7 @@ class ImageManagerCore
     /**
      * Create an image with GD extension from a given type.
      *
-     * @param string $type
+     * @param int $type
      * @param string $filename
      *
      * @return false|resource
@@ -758,8 +761,9 @@ class ImageManagerCore
 
     /**
      * copyImg copy an image located in $url and save it in a path
-     * according to $entity->$id_entity .
-     * $id_image is used if we need to add a watermark.
+     * according to $entity->$id_entity.
+     *
+     * Calls hook actionWatermark
      *
      * @param int $id_entity id of product or category (set in entity)
      * @param int $id_image (default null) id of the image if watermark enabled
@@ -772,7 +776,6 @@ class ImageManagerCore
     public static function copyImg($id_entity, $id_image = null, $url = '', $entity = 'products', $regenerate = true)
     {
         $tmpfile = tempnam(_PS_TMP_IMG_DIR_, 'ps_import');
-        $watermark_types = explode(',', Configuration::get('WATERMARK_TYPES'));
 
         switch ($entity) {
             default:
@@ -895,5 +898,21 @@ class ImageManagerCore
         }
 
         return $path;
+    }
+
+    /**
+     * The function `getPNGColorType` returns the color type byte from a PNG file
+     *
+     * @param string $fileName
+     *
+     * @return int|bool
+     */
+    public static function getPNGColorType($fileName)
+    {
+        if (!is_readable($fileName)) {
+            return false;
+        }
+
+        return ord(@file_get_contents($fileName, false, null, 25, 1));
     }
 }

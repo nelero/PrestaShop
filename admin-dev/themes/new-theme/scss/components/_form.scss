@@ -254,3 +254,29 @@
     height: 1.375rem;
   }
 }
+
+.select2-container {
+  &:not(.select2-container--bootstrap4) {
+    .select2-selection {
+      padding: var(--#{$cdk}size-8) var(--#{$cdk}size-32) var(--#{$cdk}size-8) var(--#{$cdk}size-16);
+    }
+  }
+}
+
+.small.form-external-link,
+.form-external-link {
+  font-weight: 400;
+
+  .btn {
+    font-weight: 400;
+  }
+}
+
+/* Useful mostly in ToggleChildrenChoice to highlight one of the children contains errors */
+.form-check-radio.has-error {
+  color: var(--#{$cdk}red-300);
+}
+
+.pstaggerClosingCross  {
+  cursor: pointer;
+}

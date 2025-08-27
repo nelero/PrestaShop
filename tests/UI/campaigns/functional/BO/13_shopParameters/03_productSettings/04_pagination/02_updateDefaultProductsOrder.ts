@@ -1,20 +1,17 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
 
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import productSettingsPage from '@pages/BO/shopParameters/productSettings';
-// Import FO pages
-import {homePage as homePageFO} from '@pages/FO/classic/home';
-import {categoryPage as categoryPageFO} from '@pages/FO/classic/category';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+import {
+  boDashboardPage,
+  boLoginPage,
+  boProductSettingsPage,
+  type BrowserContext,
+  foClassicCategoryPage,
+  foClassicHomePage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_shopParameters_productSettings_pagination_updateDefaultProductsOrder';
 
@@ -29,31 +26,37 @@ describe('BO - Shop Parameters - Product Settings : Update default product order
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   it('should go to \'Shop parameters > Product Settings\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToProductSettingsPage', baseContext);
 
-    await dashboardPage.goToSubMenu(
+    await boDashboardPage.goToSubMenu(
       page,
-      dashboardPage.shopParametersParentLink,
-      dashboardPage.productSettingsLink,
+      boDashboardPage.shopParametersParentLink,
+      boDashboardPage.productSettingsLink,
     );
 
-    await productSettingsPage.closeSfToolBar(page);
+    await boProductSettingsPage.closeSfToolBar(page);
 
-    const pageTitle = await productSettingsPage.getPageTitle(page);
-    expect(pageTitle).to.contains(productSettingsPage.pageTitle);
+    const pageTitle = await boProductSettingsPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boProductSettingsPage.pageTitle);
   });
 
   const tests = [
@@ -104,31 +107,31 @@ describe('BO - Shop Parameters - Product Settings : Update default product order
       it(`should set products default order to: '${test.args.orderBy} - ${test.args.orderMethod}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `updateProductsOrder${index + 1}`, baseContext);
 
-        const result = await productSettingsPage.setDefaultProductsOrder(
+        const result = await boProductSettingsPage.setDefaultProductsOrder(
           page,
           test.args.orderBy,
           test.args.orderMethod,
         );
 
-        expect(result).to.contains(productSettingsPage.successfulUpdateMessage);
+        expect(result).to.contains(boProductSettingsPage.successfulUpdateMessage);
       });
 
       it('should view my shop', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `viewMyShop${index + 1}`, baseContext);
 
-        page = await productSettingsPage.viewMyShop(page);
+        page = await boProductSettingsPage.viewMyShop(page);
 
-        const isHomePage = await homePageFO.isHomePage(page);
+        const isHomePage = await foClassicHomePage.isHomePage(page);
         expect(isHomePage, 'Home page was not opened').to.eq(true);
       });
 
       it('should go to all products page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToHomeCategory${index + 1}`, baseContext);
 
-        await homePageFO.changeLanguage(page, 'en');
-        await homePageFO.goToAllProductsPage(page);
+        await foClassicHomePage.changeLanguage(page, 'en');
+        await foClassicHomePage.goToAllProductsPage(page);
 
-        const isCategoryPage = await categoryPageFO.isCategoryPage(page);
+        const isCategoryPage = await foClassicCategoryPage.isCategoryPage(page);
         expect(isCategoryPage, 'Home category page was not opened');
       });
 
@@ -137,7 +140,7 @@ describe('BO - Shop Parameters - Product Settings : Update default product order
         async function () {
           await testContext.addContextItem(this, 'testIdentifier', `checkProductsOrder${index + 1}`, baseContext);
 
-          const defaultProductOrder = await categoryPageFO.getSortByValue(page);
+          const defaultProductOrder = await foClassicCategoryPage.getSortByValue(page);
           expect(defaultProductOrder, 'Default products order is incorrect').to.contains(test.args.textOnSelect);
         },
       );
@@ -145,10 +148,10 @@ describe('BO - Shop Parameters - Product Settings : Update default product order
       it('should go back to BO', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goBackToBo${index + 1}`, baseContext);
 
-        page = await homePageFO.closePage(browserContext, page, 0);
+        page = await foClassicHomePage.closePage(browserContext, page, 0);
 
-        const pageTitle = await productSettingsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(productSettingsPage.pageTitle);
+        const pageTitle = await boProductSettingsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductSettingsPage.pageTitle);
       });
     });
   });

@@ -1,20 +1,16 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import common tests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-import dashboardPage from '@pages/BO/dashboard';
-import productsPage from '@pages/BO/catalog/products';
-import createProductsPage from '@pages/BO/catalog/products/add';
-
-// Import data
-import Products from '@data/demo/products';
-
-import type {BrowserContext, Page} from 'playwright';
 import {expect} from 'chai';
+
+import {
+  boDashboardPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  type BrowserContext,
+  dataProducts,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_catalog_products_footer';
 
@@ -24,75 +20,81 @@ describe('BO - Catalog - Products : Footer', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   it('should go to \'Catalog > Products\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPage', baseContext);
 
-    await dashboardPage.goToSubMenu(
+    await boDashboardPage.goToSubMenu(
       page,
-      dashboardPage.catalogParentLink,
-      dashboardPage.productsLink,
+      boDashboardPage.catalogParentLink,
+      boDashboardPage.productsLink,
     );
-    await productsPage.closeSfToolBar(page);
+    await boProductsPage.closeSfToolBar(page);
 
-    const pageTitle = await productsPage.getPageTitle(page);
-    expect(pageTitle).to.contains(productsPage.pageTitle);
+    const pageTitle = await boProductsPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boProductsPage.pageTitle);
   });
 
-  it(`should filter a product named "${Products.demo_12.name}"`, async function () {
+  it(`should filter a product named "${dataProducts.demo_12.name}"`, async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'filterProduct', baseContext);
 
-    await productsPage.resetFilter(page);
-    await productsPage.filterProducts(page, 'product_name', Products.demo_12.name, 'input');
+    await boProductsPage.resetFilter(page);
+    await boProductsPage.filterProducts(page, 'product_name', dataProducts.demo_12.name, 'input');
 
-    const numberOfProductsAfterFilter = await productsPage.getNumberOfProductsFromList(page);
+    const numberOfProductsAfterFilter = await boProductsPage.getNumberOfProductsFromList(page);
     expect(numberOfProductsAfterFilter).to.equal(1);
 
-    const textColumn = await productsPage.getTextColumn(page, 'product_name', 1);
-    expect(textColumn).to.equal(Products.demo_12.name);
+    const textColumn = await boProductsPage.getTextColumn(page, 'product_name', 1);
+    expect(textColumn).to.equal(dataProducts.demo_12.name);
   });
 
   it('should edit the product', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToEditPage', baseContext);
 
-    await productsPage.goToProductPage(page, 1);
+    await boProductsPage.goToProductPage(page, 1);
 
-    const pageTitle: string = await createProductsPage.getPageTitle(page);
-    expect(pageTitle).to.contains(createProductsPage.pageTitle);
+    const pageTitle: string = await boProductsCreatePage.getPageTitle(page);
+    expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
   });
 
   it('should duplicate the product', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'duplicateProduct', baseContext);
 
-    const textMessage = await createProductsPage.duplicateProduct(page);
-    expect(textMessage).to.equal(createProductsPage.successfulDuplicateMessage);
+    const textMessage = await boProductsCreatePage.duplicateProduct(page);
+    expect(textMessage).to.equal(boProductsCreatePage.successfulDuplicateMessage);
   });
 
   it('should check the duplicated product', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkDuplicatedProduct', baseContext);
 
-    const nameEN = await createProductsPage.getProductName(page, 'en');
-    expect(nameEN).to.equal(`copy of ${Products.demo_12.name}`);
+    const nameEN = await boProductsCreatePage.getProductName(page, 'en');
+    expect(nameEN).to.equal(`copy of ${dataProducts.demo_12.name}`);
 
-    const nameFR = await createProductsPage.getProductName(page, 'fr');
-    expect(nameFR).to.equal(`copie de ${Products.demo_12.name}`);
+    const nameFR = await boProductsCreatePage.getProductName(page, 'fr');
+    expect(nameFR).to.equal(`copie de ${dataProducts.demo_12.name}`);
   });
 
   it('should delete the duplicated product', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'deleteDuplicatedProduct', baseContext);
 
-    const textMessage = await createProductsPage.deleteProduct(page);
-    expect(textMessage).to.equal(createProductsPage.successfulDeleteMessage);
+    const textMessage = await boProductsCreatePage.deleteProduct(page);
+    expect(textMessage).to.equal(boProductsCreatePage.successfulDeleteMessage);
   });
 });

@@ -1,19 +1,16 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
 
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-import dashboardPage from '@pages/BO/dashboard';
-import stocksPage from '@pages/BO/catalog/stocks';
-
-// Import data
-import Products from '@data/demo/products';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+import {
+  boDashboardPage,
+  boLoginPage,
+  boStockPage,
+  type BrowserContext,
+  dataProducts,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_catalog_stocks_updateQuantity';
 
@@ -25,40 +22,46 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
   let firstProductQuantity: number = 0;
   let secondProductQuantity: number = 0;
 
-  const productStock: any = Products.demo_18;
+  const productStock: any = dataProducts.demo_18;
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   it('should go to \'Catalog > Stocks\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToStocksPage', baseContext);
 
-    await dashboardPage.goToSubMenu(
+    await boDashboardPage.goToSubMenu(
       page,
-      dashboardPage.catalogParentLink,
-      dashboardPage.stocksLink,
+      boDashboardPage.catalogParentLink,
+      boDashboardPage.stocksLink,
     );
-    await stocksPage.closeSfToolBar(page);
+    await boStockPage.closeSfToolBar(page);
 
-    const pageTitle = await stocksPage.getPageTitle(page);
-    expect(pageTitle).to.contains(stocksPage.pageTitle);
+    const pageTitle = await boStockPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boStockPage.pageTitle);
   });
 
   it('should get number of products in list', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'getNumberOfProducts', baseContext);
 
-    numberOfProducts = await stocksPage.getTotalNumberOfProducts(page);
+    numberOfProducts = await boStockPage.getTotalNumberOfProducts(page);
     expect(numberOfProducts).to.be.above(0);
   });
 
@@ -70,18 +73,18 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
       it(`should filter by name '${productStock.name}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `filterStocks${test.args.action}`, baseContext);
 
-        await stocksPage.simpleFilter(page, productStock.name);
+        await boStockPage.simpleFilter(page, productStock.name);
 
-        const numberOfProductsAfterFilter = await stocksPage.getNumberOfProductsFromList(page);
+        const numberOfProductsAfterFilter = await boStockPage.getNumberOfProductsFromList(page);
         expect(numberOfProductsAfterFilter).to.be.at.most(numberOfProducts);
 
-        const textColumn = await stocksPage.getTextColumnFromTableStocks(page, 1, 'product_name');
+        const textColumn = await boStockPage.getTextColumnFromTableStocks(page, 1, 'product_name');
         expect(productStock.name).to.contains(textColumn);
 
         // Get physical and available quantities of product
         productStock.stocks = {
-          physical: parseInt(await stocksPage.getTextColumnFromTableStocks(page, 1, 'physical'), 10),
-          available: parseInt(await stocksPage.getTextColumnFromTableStocks(page, 1, 'available'), 10),
+          physical: parseInt(await boStockPage.getTextColumnFromTableStocks(page, 1, 'physical'), 10),
+          available: parseInt(await boStockPage.getTextColumnFromTableStocks(page, 1, 'available'), 10),
         };
 
         expect(productStock.stocks.physical).to.be.above(0);
@@ -92,15 +95,15 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.action}ToQuantity`, baseContext);
 
         // Update Quantity and check successful message
-        const updateMessage = await stocksPage.updateRowQuantityWithInput(page, 1, test.args.updateValue);
-        expect(updateMessage).to.contains(stocksPage.successfulUpdateMessage);
+        const updateMessage = await boStockPage.updateRowQuantityWithInput(page, 1, test.args.updateValue);
+        expect(updateMessage).to.contains(boStockPage.successfulUpdateMessage);
       });
 
       it('should check physical and available quantity', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.action}CheckQuantity`, baseContext);
 
         // Check physical and available quantities of product after update
-        const quantityToCheck = await stocksPage.getStockQuantityForProduct(page, 1);
+        const quantityToCheck = await boStockPage.getStockQuantityForProduct(page, 1);
 
         expect(quantityToCheck.physical).to.be.equal(productStock.stocks.physical + test.args.updateValue);
         productStock.stocks.physical = quantityToCheck.physical;
@@ -112,7 +115,7 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
       it('should reset all filters', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `resetFilterStocks${index}`, baseContext);
 
-        const numberOfProductsAfterReset = await stocksPage.resetFilter(page);
+        const numberOfProductsAfterReset = await boStockPage.resetFilter(page);
         expect(numberOfProductsAfterReset).to.equal(numberOfProducts);
       });
     });
@@ -126,18 +129,18 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
       it(`should filter by name '${productStock.name}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `filterStocks2${test.args.action}`, baseContext);
 
-        await stocksPage.simpleFilter(page, productStock.name);
+        await boStockPage.simpleFilter(page, productStock.name);
 
-        const numberOfProductsAfterFilter = await stocksPage.getNumberOfProductsFromList(page);
+        const numberOfProductsAfterFilter = await boStockPage.getNumberOfProductsFromList(page);
         expect(numberOfProductsAfterFilter).to.be.at.most(numberOfProducts);
 
-        const textColumn = await stocksPage.getTextColumnFromTableStocks(page, 1, 'product_name');
+        const textColumn = await boStockPage.getTextColumnFromTableStocks(page, 1, 'product_name');
         expect(productStock.name).to.contains(textColumn);
 
         // Get physical and available quantities of product
         productStock.stocks = {
-          physical: parseInt(await stocksPage.getTextColumnFromTableStocks(page, 1, 'physical'), 10),
-          available: parseInt(await stocksPage.getTextColumnFromTableStocks(page, 1, 'available'), 10),
+          physical: parseInt(await boStockPage.getTextColumnFromTableStocks(page, 1, 'physical'), 10),
+          available: parseInt(await boStockPage.getTextColumnFromTableStocks(page, 1, 'available'), 10),
         };
 
         expect(productStock.stocks.physical).to.be.above(0);
@@ -148,19 +151,19 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.action}ToQuantity2`, baseContext);
 
         // Update Quantity and check successful message
-        const updateMessage = await stocksPage.updateRowQuantityWithArrowUpDownButtons(page,
+        const updateMessage = await boStockPage.updateRowQuantityWithArrowUpDownButtons(page,
           1,
           test.args.updateValue,
           test.args.direction,
         );
-        expect(updateMessage).to.contains(stocksPage.successfulUpdateMessage);
+        expect(updateMessage).to.contains(boStockPage.successfulUpdateMessage);
       });
 
       it('should check physical and available quantity', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.action}CheckQuantity2`, baseContext);
 
         // Check physical and available quantities of product after update
-        const quantityToCheck = await stocksPage.getStockQuantityForProduct(page, 1);
+        const quantityToCheck = await boStockPage.getStockQuantityForProduct(page, 1);
 
         expect(quantityToCheck.physical).to.be.equal(productStock.stocks.physical + test.args.updateValue);
         productStock.stocks.physical = quantityToCheck.physical;
@@ -172,7 +175,7 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
       it('should reset all filters', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `resetFilterStocks${index}2`, baseContext);
 
-        const numberOfProductsAfterReset = await stocksPage.resetFilter(page);
+        const numberOfProductsAfterReset = await boStockPage.resetFilter(page);
         expect(numberOfProductsAfterReset).to.equal(numberOfProducts);
       });
     });
@@ -182,29 +185,29 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
     it('should add quantity of the first product by using the arrow up/down buttons', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateQuantityUp', baseContext);
 
-      firstProductQuantity = parseInt(await stocksPage.getTextColumnFromTableStocks(page, 1, 'available'), 10);
-      await stocksPage.setQuantityByArrowUpDown(page, 1, 6, 'up');
+      firstProductQuantity = parseInt(await boStockPage.getTextColumnFromTableStocks(page, 1, 'available'), 10);
+      await boStockPage.setQuantityByArrowUpDown(page, 1, 6, 'up');
     });
 
     it('should add quantity of the second product by setting input value', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateQuantityInput', baseContext);
 
-      secondProductQuantity = parseInt(await stocksPage.getTextColumnFromTableStocks(page, 2, 'available'), 10);
-      await stocksPage.setQuantityWithInput(page, 2, 5);
+      secondProductQuantity = parseInt(await boStockPage.getTextColumnFromTableStocks(page, 2, 'available'), 10);
+      await boStockPage.setQuantityWithInput(page, 2, 5);
     });
 
     it('should click on \'Apply new quantity\' and check new quantities', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'applyNewQuantity', baseContext);
 
-      const updateMessage = await stocksPage.clickOnApplyNewQuantity(page);
-      expect(updateMessage).to.contains(stocksPage.successfulUpdateMessage);
+      const updateMessage = await boStockPage.clickOnApplyNewQuantity(page);
+      expect(updateMessage).to.contains(boStockPage.successfulUpdateMessage);
     });
 
     it('should check the new quantity of the first product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkFirstProductQuantity', baseContext);
 
       // Check physical and available quantities of product after update
-      const quantityToCheck = await stocksPage.getStockQuantityForProduct(page, 1);
+      const quantityToCheck = await boStockPage.getStockQuantityForProduct(page, 1);
 
       expect(quantityToCheck.physical).to.be.equal(firstProductQuantity + 6);
       productStock.stocks.physical = quantityToCheck.physical;
@@ -217,7 +220,7 @@ describe('BO - Catalog - Stocks : Update Quantity', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'checkSecondProductQuantity', baseContext);
 
       // Check physical and available quantities of product after update
-      const quantityToCheck = await stocksPage.getStockQuantityForProduct(page, 2);
+      const quantityToCheck = await boStockPage.getStockQuantityForProduct(page, 2);
 
       expect(quantityToCheck.physical).to.be.equal(secondProductQuantity + 5);
       productStock.stocks.physical = quantityToCheck.physical;

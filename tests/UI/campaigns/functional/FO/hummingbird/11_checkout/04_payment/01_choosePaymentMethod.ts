@@ -1,31 +1,26 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import mailHelper from '@utils/mailHelper';
+import {expect} from 'chai';
 
-// Import common tests
 import {resetSmtpConfigTest, setupSmtpConfigTest} from '@commonTests/BO/advancedParameters/smtp';
-import {installHummingbird, uninstallHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import FO pages
-import cartPage from '@pages/FO/hummingbird/cart';
-import orderConfirmationPage from '@pages/FO/hummingbird/checkout/orderConfirmation';
-import homePage from '@pages/FO/hummingbird/home';
-import checkoutPage from '@pages/FO/hummingbird/checkout';
-import quickViewModal from '@pages/FO/hummingbird/modal/quickView';
-import blockCartModal from '@pages/FO/hummingbird/modal/blockCart';
+import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
 import {
-  // Import data
+  type BrowserContext,
   dataCustomers,
   dataPaymentMethods,
   type FakerPaymentMethod,
+  foHummingbirdCartPage,
+  foHummingbirdCheckoutPage,
+  foHummingbirdCheckoutOrderConfirmationPage,
+  foHummingbirdHomePage,
+  foHummingbirdModalBlockCartPage,
+  foHummingbirdModalQuickViewPage,
+  type MailDev,
+  type MailDevEmail,
+  type Page,
+  utilsMail,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
-import MailDevEmail from '@data/types/maildevEmail';
-import MailDev from 'maildev';
 
 const baseContext: string = 'functional_FO_hummingbird_checkout_payment_choosePaymentMethod';
 
@@ -40,14 +35,14 @@ describe('FO - Checkout - Payment : Choose a payment method', async () => {
   setupSmtpConfigTest(`${baseContext}_preTest_0`);
 
   // Pre-condition : Install Hummingbird
-  installHummingbird(`${baseContext}_preTest_1`);
+  enableHummingbird(`${baseContext}_preTest_1`);
 
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
-    mailListener = mailHelper.createMailListener();
-    mailHelper.startListener(mailListener);
+    mailListener = utilsMail.createMailListener();
+    utilsMail.startListener(mailListener);
 
     // get all emails
     // @ts-ignore
@@ -57,9 +52,9 @@ describe('FO - Checkout - Payment : Choose a payment method', async () => {
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
-    mailHelper.stopListener(mailListener);
+    utilsMail.stopListener(mailListener);
   });
 
   describe('Choose a payment method', async () => {
@@ -71,38 +66,38 @@ describe('FO - Checkout - Payment : Choose a payment method', async () => {
       it('should go to FO', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToFo${index}`, baseContext);
 
-        await homePage.goToFo(page);
-        await homePage.changeLanguage(page, 'en');
+        await foHummingbirdHomePage.goToFo(page);
+        await foHummingbirdHomePage.changeLanguage(page, 'en');
 
-        const isHomePage = await homePage.isHomePage(page);
+        const isHomePage = await foHummingbirdHomePage.isHomePage(page);
         expect(isHomePage, 'Fail to open FO home page').to.eq(true);
       });
 
       it('should quick view the first product', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `quickViewFirstProduct${index}`, baseContext);
 
-        await homePage.quickViewProduct(page, 1);
+        await foHummingbirdHomePage.quickViewProduct(page, 1);
 
-        const isQuickViewModal = await quickViewModal.isQuickViewProductModalVisible(page);
+        const isQuickViewModal = await foHummingbirdModalQuickViewPage.isQuickViewProductModalVisible(page);
         expect(isQuickViewModal).to.equal(true);
       });
 
       it('should add the first product to cart', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `addProductToCart${index}`, baseContext);
 
-        await quickViewModal.addToCartByQuickView(page);
-        await blockCartModal.proceedToCheckout(page);
+        await foHummingbirdModalQuickViewPage.addToCartByQuickView(page);
+        await foHummingbirdModalBlockCartPage.proceedToCheckout(page);
 
-        const pageTitle = await cartPage.getPageTitle(page);
-        expect(pageTitle).to.eq(cartPage.pageTitle);
+        const pageTitle = await foHummingbirdCartPage.getPageTitle(page);
+        expect(pageTitle).to.eq(foHummingbirdCartPage.pageTitle);
       });
 
       it('should proceed to checkout and go to checkout page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `proceedToCheckout${index}`, baseContext);
 
-        await cartPage.clickOnProceedToCheckout(page);
+        await foHummingbirdCartPage.clickOnProceedToCheckout(page);
 
-        const isCheckoutPage = await checkoutPage.isCheckoutPage(page);
+        const isCheckoutPage = await foHummingbirdCheckoutPage.isCheckoutPage(page);
         expect(isCheckoutPage).to.eq(true);
       });
 
@@ -110,9 +105,9 @@ describe('FO - Checkout - Payment : Choose a payment method', async () => {
         it('should signin', async function () {
           await testContext.addContextItem(this, 'testIdentifier', `signin${index}`, baseContext);
 
-          await checkoutPage.clickOnSignIn(page);
+          await foHummingbirdCheckoutPage.clickOnSignIn(page);
 
-          const isCustomerConnected = await checkoutPage.customerLogin(page, dataCustomers.johnDoe);
+          const isCustomerConnected = await foHummingbirdCheckoutPage.customerLogin(page, dataCustomers.johnDoe);
           expect(isCustomerConnected, 'Customer is connected').to.eq(true);
         });
       }
@@ -121,7 +116,7 @@ describe('FO - Checkout - Payment : Choose a payment method', async () => {
         await testContext.addContextItem(this, 'testIdentifier', `goToDeliveryStep${index}`, baseContext);
 
         // Address step - Go to delivery step
-        const isStepAddressComplete = await checkoutPage.goToDeliveryStep(page);
+        const isStepAddressComplete = await foHummingbirdCheckoutPage.goToDeliveryStep(page);
         expect(isStepAddressComplete, 'Step Address is not complete').to.eq(true);
       });
 
@@ -129,7 +124,7 @@ describe('FO - Checkout - Payment : Choose a payment method', async () => {
         await testContext.addContextItem(this, 'testIdentifier', `goToPaymentStep${index}`, baseContext);
 
         // Delivery step - Go to payment step
-        const isStepDeliveryComplete = await checkoutPage.goToPaymentStep(page);
+        const isStepDeliveryComplete = await foHummingbirdCheckoutPage.goToPaymentStep(page);
         expect(isStepDeliveryComplete, 'Step Address is not complete').to.eq(true);
       });
 
@@ -137,17 +132,17 @@ describe('FO - Checkout - Payment : Choose a payment method', async () => {
         await testContext.addContextItem(this, 'testIdentifier', `confirmOrder${index}`, baseContext);
 
         // Payment step - Choose payment step
-        await checkoutPage.choosePaymentAndOrder(page, test.moduleName);
+        await foHummingbirdCheckoutPage.choosePaymentAndOrder(page, test.moduleName);
 
         // Check the confirmation message
-        const cardTitle = await orderConfirmationPage.getOrderConfirmationCardTitle(page);
-        expect(cardTitle).to.contains(orderConfirmationPage.orderConfirmationCardTitle);
+        const cardTitle = await foHummingbirdCheckoutOrderConfirmationPage.getOrderConfirmationCardTitle(page);
+        expect(cardTitle).to.contains(foHummingbirdCheckoutOrderConfirmationPage.orderConfirmationCardTitle);
       });
 
       it(`should check the payment method is ${test.displayName}`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkPaymentMethod${index}`, baseContext);
 
-        const paymentMethod = await orderConfirmationPage.getPaymentMethod(page);
+        const paymentMethod = await foHummingbirdCheckoutOrderConfirmationPage.getPaymentMethod(page);
         expect(paymentMethod).to.be.equal(test.displayName);
       });
 
@@ -170,5 +165,5 @@ describe('FO - Checkout - Payment : Choose a payment method', async () => {
   resetSmtpConfigTest(`${baseContext}_postTest_0`);
 
   // Post-condition : Uninstall Hummingbird
-  uninstallHummingbird(`${baseContext}_postTest_1`);
+  disableHummingbird(`${baseContext}_postTest_1`);
 });

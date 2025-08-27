@@ -23,6 +23,9 @@
  * @copyright Since 2007 PrestaShop SA and Contributors
  * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
  */
+
+use PrestaShopBundle\Form\Admin\Type\FormattedTextareaType;
+
 class OrderDetailCore extends ObjectModel
 {
     /** @var int */
@@ -201,7 +204,7 @@ class OrderDetailCore extends ObjectModel
             'product_id' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
             'product_attribute_id' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
             'id_customization' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
-            'product_name' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 4194303],
+            'product_name' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => FormattedTextareaType::LIMIT_MEDIUMTEXT_UTF8_MB4],
             'product_quantity' => ['type' => self::TYPE_INT, 'validate' => 'isInt', 'required' => true],
             'product_quantity_in_stock' => ['type' => self::TYPE_INT, 'validate' => 'isInt'],
             'product_quantity_return' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedInt'],
@@ -214,21 +217,21 @@ class OrderDetailCore extends ObjectModel
             'reduction_amount_tax_excl' => ['type' => self::TYPE_FLOAT, 'validate' => 'isPrice'],
             'group_reduction' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat'],
             'product_quantity_discount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat'],
-            'product_ean13' => ['type' => self::TYPE_STRING, 'validate' => 'isEan13'],
-            'product_isbn' => ['type' => self::TYPE_STRING, 'validate' => 'isIsbn'],
-            'product_upc' => ['type' => self::TYPE_STRING, 'validate' => 'isUpc'],
-            'product_mpn' => ['type' => self::TYPE_STRING, 'validate' => 'isMpn'],
-            'product_reference' => ['type' => self::TYPE_STRING, 'validate' => 'isReference'],
-            'product_supplier_reference' => ['type' => self::TYPE_STRING, 'validate' => 'isReference'],
+            'product_ean13' => ['type' => self::TYPE_STRING, 'validate' => 'isEan13', 'size' => 13],
+            'product_isbn' => ['type' => self::TYPE_STRING, 'validate' => 'isIsbn', 'size' => 32],
+            'product_upc' => ['type' => self::TYPE_STRING, 'validate' => 'isUpc', 'size' => 12],
+            'product_mpn' => ['type' => self::TYPE_STRING, 'validate' => 'isMpn', 'size' => 40],
+            'product_reference' => ['type' => self::TYPE_STRING, 'validate' => 'isReference', 'size' => 64],
+            'product_supplier_reference' => ['type' => self::TYPE_STRING, 'validate' => 'isReference', 'size' => 64],
             'product_weight' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat'],
-            'tax_name' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName'],
+            'tax_name' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'size' => 16],
             'tax_rate' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat'],
             'tax_computation_method' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
             'id_tax_rules_group' => ['type' => self::TYPE_INT, 'validate' => 'isInt'],
             'ecotax' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat'],
             'ecotax_tax_rate' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat'],
             'discount_quantity_applied' => ['type' => self::TYPE_INT, 'validate' => 'isInt'],
-            'download_hash' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName'],
+            'download_hash' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'size' => 255],
             'download_nb' => ['type' => self::TYPE_INT, 'validate' => 'isInt'],
             'download_deadline' => ['type' => self::TYPE_DATE, 'validate' => 'isDateFormat'],
             'unit_price_tax_incl' => ['type' => self::TYPE_FLOAT, 'validate' => 'isPrice'],
@@ -342,8 +345,6 @@ class OrderDetailCore extends ObjectModel
     /**
      * Returns the tax calculator associated to this order detail.
      *
-     * @since 1.5.0.1
-     *
      * @return TaxCalculator
      */
     public function getTaxCalculator()
@@ -353,8 +354,6 @@ class OrderDetailCore extends ObjectModel
 
     /**
      * Return the tax calculator associated to this order_detail.
-     *
-     * @since 1.5.0.1
      *
      * @param int $id_order_detail
      *
@@ -382,7 +381,6 @@ class OrderDetailCore extends ObjectModel
     /**
      * Save the tax calculator.
      *
-     * @since 1.5.0.1
      * @deprecated Functionality moved to Order::updateOrderDetailTax
      *             because we need the full order object to do a good job here.
      *             Will no longer be supported after 1.6.1

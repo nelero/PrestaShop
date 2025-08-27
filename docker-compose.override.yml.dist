@@ -1,5 +1,3 @@
-version: '2.1'
-
 services:
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -15,3 +13,8 @@ services:
       - mysql
     networks:
       - prestashop-network
+  prestashop-git:
+      environment:
+        # BLACKFIRE_ENABLE: 1
+        # BLACKFIRE_SERVER_ID: "your_server_id"
+        # BLACKFIRE_SERVER_TOKEN: "your_blackfire_server_token"

@@ -1,16 +1,15 @@
 // Import utils
 import testContext from '@utils/testContext';
-import helper from '@utils/helpers';
-
-// Import FO pages
-import {homePage} from '@pages/FO/classic/home';
-import {categoryPage} from '@pages/FO/classic/category';
-
-// Import data
-import Categories from '@data/demo/categories';
 
 import {expect} from 'chai';
-import {BrowserContext, Page} from 'playwright';
+import {
+  type BrowserContext,
+  dataCategories,
+  foClassicCategoryPage,
+  foClassicHomePage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'sanity_catalogFO_filterProducts';
 
@@ -27,12 +26,12 @@ describe('FO - Catalog : Filter Products by categories in Home page', async () =
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Catalog FO: Filter products from catalog', async () => {
@@ -40,40 +39,40 @@ describe('FO - Catalog : Filter Products by categories in Home page', async () =
     it('should open the shop page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToShopFO', baseContext);
 
-      await homePage.goTo(page, global.FO.URL);
+      await foClassicHomePage.goTo(page, global.FO.URL);
 
-      const result = await homePage.isHomePage(page);
+      const result = await foClassicHomePage.isHomePage(page);
       expect(result).to.eq(true);
     });
 
     it('should check and get the products number', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkNumberOfProducts', baseContext);
 
-      await homePage.goToAllProductsPage(page);
+      await foClassicHomePage.goToAllProductsPage(page);
 
-      allProductsNumber = await categoryPage.getProductsNumber(page);
+      allProductsNumber = await foClassicCategoryPage.getProductsNumber(page);
       expect(allProductsNumber).to.be.above(0);
     });
 
     it('should filter products by the category \'Accessories\' and check result', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'FilterProductByCategory', baseContext);
 
-      await categoryPage.goToCategory(page, Categories.accessories.id);
+      await foClassicCategoryPage.goToCategory(page, dataCategories.accessories.id);
 
-      const pageTitle = await categoryPage.getPageTitle(page);
-      expect(pageTitle).to.equal(Categories.accessories.name);
+      const pageTitle = await foClassicCategoryPage.getPageTitle(page);
+      expect(pageTitle).to.equal(dataCategories.accessories.name);
 
-      const numberOfProducts = await categoryPage.getProductsNumber(page);
+      const numberOfProducts = await foClassicCategoryPage.getProductsNumber(page);
       expect(numberOfProducts).to.be.below(allProductsNumber);
     });
 
     it('should filter products by the subcategory \'Stationery\' and check result', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'FilterProductBySubCategory', baseContext);
 
-      await categoryPage.reloadPage(page);
-      await categoryPage.goToSubCategory(page, Categories.accessories.id, Categories.stationery.id);
+      await foClassicCategoryPage.reloadPage(page);
+      await foClassicCategoryPage.goToSubCategory(page, dataCategories.accessories.id, dataCategories.stationery.id);
 
-      const numberOfProducts = await categoryPage.getProductsNumber(page);
+      const numberOfProducts = await foClassicCategoryPage.getProductsNumber(page);
       expect(numberOfProducts).to.be.below(allProductsNumber);
     });
   });

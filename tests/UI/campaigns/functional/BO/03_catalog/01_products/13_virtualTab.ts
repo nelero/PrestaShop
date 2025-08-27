@@ -1,50 +1,40 @@
-// Import utils
-import helper from '@utils/helpers';
-import files from '@utils/files';
 import testContext from '@utils/testContext';
-import date from '@utils/date';
-
-// Import common tests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import createProductsPage from '@pages/BO/catalog/products/add';
-import productsPage from '@pages/BO/catalog/products';
-import virtualProductTab from '@pages/BO/catalog/products/add/virtualProductTab';
-import productSettings from '@pages/BO/shopParameters/productSettings';
-
-// Import FO pages
-import {productPage as foProductPage} from '@pages/FO/classic/product';
-import {cartPage} from '@pages/FO/classic/cart';
-import {checkoutPage} from '@pages/FO/classic/checkout';
-import {orderConfirmationPage} from '@pages/FO/classic/checkout/orderConfirmation';
-import {homePage} from '@pages/FO/classic/home';
-import {myAccountPage} from '@pages/FO/classic/myAccount';
-import {orderHistoryPage} from '@pages/FO/classic/myAccount/orderHistory';
-import {orderDetailsPage} from '@pages/FO/classic/myAccount/orderDetails';
-
-// Import data
-import ProductData from '@data/faker/product';
+import {expect} from 'chai';
 
 import {
-  // Import data
+  boDashboardPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  boProductSettingsPage,
+  boProductsCreateTabVirtualProductPage,
+  type BrowserContext,
   dataCustomers,
   dataPaymentMethods,
+  FakerProduct,
+  foClassicCartPage,
+  foClassicCheckoutPage,
+  foClassicCheckoutOrderConfirmationPage,
+  foClassicHomePage,
+  foClassicMyAccountPage,
+  foClassicMyOrderDetailsPage,
+  foClassicMyOrderHistoryPage,
+  foClassicProductPage,
+  type Page,
+  utilsDate,
+  utilsFile,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import type {BrowserContext, Page} from 'playwright';
-import {expect} from 'chai';
 
 const baseContext: string = 'functional_BO_catalog_products_virtualTab';
 
 describe('BO - Catalog - Products : Virtual tab', async () => {
   let browserContext: BrowserContext;
   let page: Page;
-  const futureDate: string = date.getDateFormat('yyyy-mm-dd', 'future');
+  const futureDate: string = utilsDate.getDateFormat('yyyy-mm-dd', 'future');
 
   // Data to create standard product
-  const newProductData: ProductData = new ProductData({
+  const newProductData: FakerProduct = new FakerProduct({
     type: 'virtual',
     price: 0,
     quantity: 100,
@@ -59,62 +49,68 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
-    await files.generateImage(newProductData.fileName);
+    await utilsFile.generateImage(newProductData.fileName);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
-    await files.deleteFile(newProductData.fileName);
+    await utilsFile.deleteFile(newProductData.fileName);
   });
 
   // 1 - Create product
   describe('Create product', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Catalog > Products\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.catalogParentLink,
-        dashboardPage.productsLink,
+        boDashboardPage.catalogParentLink,
+        boDashboardPage.productsLink,
       );
 
-      await productsPage.closeSfToolBar(page);
+      await boProductsPage.closeSfToolBar(page);
 
-      const pageTitle = await productsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(productsPage.pageTitle);
+      const pageTitle = await boProductsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsPage.pageTitle);
     });
 
     it('should click on \'New product\' button and check new product modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewProductButton', baseContext);
 
-      const isModalVisible = await productsPage.clickOnNewProductButton(page);
+      const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
       expect(isModalVisible).eq(true);
     });
 
     it('should choose \'Virtual product\' and go to new product page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'chooseVirtualProduct', baseContext);
 
-      await productsPage.selectProductType(page, newProductData.type);
+      await boProductsPage.selectProductType(page, newProductData.type);
 
-      await productsPage.clickOnAddNewProduct(page);
+      await boProductsPage.clickOnAddNewProduct(page);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should create virtual product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createVirtualProduct', baseContext);
 
-      const createProductMessage: string = await createProductsPage.setProduct(page, newProductData);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage: string|null = await boProductsCreatePage.setProduct(page, newProductData);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
   });
 
@@ -124,11 +120,11 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'previewProduct', baseContext);
 
       // Click on preview button
-      page = await createProductsPage.previewProduct(page);
+      page = await boProductsCreatePage.previewProduct(page);
 
-      await foProductPage.changeLanguage(page, 'en');
+      await foClassicProductPage.changeLanguage(page, 'en');
 
-      const pageTitle: string = await foProductPage.getPageTitle(page);
+      const pageTitle: string = await foClassicProductPage.getPageTitle(page);
       expect(pageTitle).to.contains(newProductData.name);
     });
 
@@ -136,9 +132,9 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'addProductToCart', baseContext);
 
       // Add the product to the cart
-      await foProductPage.addProductToTheCart(page, 1);
+      await foClassicProductPage.addProductToTheCart(page, 1);
 
-      const notificationsNumber = await cartPage.getCartNotificationsNumber(page);
+      const notificationsNumber = await foClassicCartPage.getCartNotificationsNumber(page);
       expect(notificationsNumber).to.equal(1);
     });
 
@@ -146,62 +142,62 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'proceedToCheckout', baseContext);
 
       // Proceed to checkout the shopping cart
-      await cartPage.clickOnProceedToCheckout(page);
+      await foClassicCartPage.clickOnProceedToCheckout(page);
 
       // Personal information step - Login
-      await checkoutPage.clickOnSignIn(page);
-      await checkoutPage.customerLogin(page, dataCustomers.johnDoe);
+      await foClassicCheckoutPage.clickOnSignIn(page);
+      await foClassicCheckoutPage.customerLogin(page, dataCustomers.johnDoe);
     });
 
     it('should go to payment step', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToPaymentStep', baseContext);
 
-      const isStepAddressComplete = await checkoutPage.goToDeliveryStep(page);
+      const isStepAddressComplete = await foClassicCheckoutPage.goToDeliveryStep(page);
       expect(isStepAddressComplete, 'Step Address is not complete').eq(true);
     });
 
     it('should pay the order', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'payTheOrder', baseContext);
 
-      await checkoutPage.choosePaymentAndOrder(page, dataPaymentMethods.wirePayment.moduleName);
+      await foClassicCheckoutPage.choosePaymentAndOrder(page, dataPaymentMethods.wirePayment.moduleName);
 
-      const cardTitle = await orderConfirmationPage.getOrderConfirmationCardTitle(page);
-      expect(cardTitle).to.contains(orderConfirmationPage.orderConfirmationCardTitle);
+      const cardTitle = await foClassicCheckoutOrderConfirmationPage.getOrderConfirmationCardTitle(page);
+      expect(cardTitle).to.contains(foClassicCheckoutOrderConfirmationPage.orderConfirmationCardTitle);
     });
 
     it('should go to my account page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAccountPage', baseContext);
 
-      await homePage.goToMyAccountPage(page);
+      await foClassicHomePage.goToMyAccountPage(page);
 
-      const pageTitle = await myAccountPage.getPageTitle(page);
-      expect(pageTitle).to.equal(myAccountPage.pageTitle);
+      const pageTitle = await foClassicMyAccountPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foClassicMyAccountPage.pageTitle);
     });
 
     it('should go to order history page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrderHistoryPage', baseContext);
 
-      await myAccountPage.goToHistoryAndDetailsPage(page);
+      await foClassicMyAccountPage.goToHistoryAndDetailsPage(page);
 
-      const pageHeaderTitle = await orderHistoryPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(orderHistoryPage.pageTitle);
+      const pageHeaderTitle = await foClassicMyOrderHistoryPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyOrderHistoryPage.pageTitle);
     });
 
     it('should go to order details page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFoToOrderDetails', baseContext);
 
-      await orderHistoryPage.goToDetailsPage(page);
+      await foClassicMyOrderHistoryPage.goToDetailsPage(page);
 
-      const pageTitle = await orderDetailsPage.getPageTitle(page);
-      expect(pageTitle).to.equal(orderDetailsPage.pageTitle);
+      const pageTitle = await foClassicMyOrderDetailsPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foClassicMyOrderDetailsPage.pageTitle);
     });
 
     it('should download the file', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkDownloadFile', baseContext);
 
-      await orderDetailsPage.clickOnDownloadLink(page);
+      await foClassicMyOrderDetailsPage.clickOnDownloadLink(page);
 
-      const doesFileExist = await files.doesFileExist(newProductData.fileName, 5000);
+      const doesFileExist = await utilsFile.doesFileExist(newProductData.fileName, 5000);
       expect(doesFileExist, 'File is not downloaded!').eq(true);
     });
 
@@ -209,10 +205,10 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBO', baseContext);
 
       // Go back to BO
-      page = await foProductPage.closePage(browserContext, page, 0);
+      page = await foClassicProductPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
   });
 
@@ -221,10 +217,10 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
     it('should set the product quantity to 0', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setProductQuantity', baseContext);
 
-      await virtualProductTab.setProductQuantity(page, -100);
+      await boProductsCreateTabVirtualProductPage.setProductQuantity(page, -100);
 
-      const createProductMessage = await createProductsPage.saveProduct(page);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.saveProduct(page);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
 
     [
@@ -235,28 +231,28 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
       it(`should check the '${test.args.option}' option`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkOrderOption${index}`, baseContext);
 
-        await virtualProductTab.setOptionWhenOutOfStock(page, test.args.option);
+        await boProductsCreateTabVirtualProductPage.setOptionWhenOutOfStock(page, test.args.option);
 
-        const createProductMessage = await createProductsPage.saveProduct(page);
-        expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+        const createProductMessage = await boProductsCreatePage.saveProduct(page);
+        expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
       });
 
       it('should preview product', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `previewProduct${index}`, baseContext);
 
         // Click on preview button
-        page = await createProductsPage.previewProduct(page);
+        page = await boProductsCreatePage.previewProduct(page);
 
-        await foProductPage.changeLanguage(page, 'en');
+        await foClassicProductPage.changeLanguage(page, 'en');
 
-        const pageTitle = await foProductPage.getPageTitle(page);
+        const pageTitle = await foClassicProductPage.getPageTitle(page);
         expect(pageTitle).to.contains(newProductData.name);
       });
 
       it('should check the add to cart button', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkAddToCartButton${index}`, baseContext);
 
-        const isVisible = await foProductPage.isAddToCartButtonEnabled(page);
+        const isVisible = await foClassicProductPage.isAddToCartButtonEnabled(page);
         expect(isVisible).to.eq(test.args.isAddToCartButtonVisible);
       });
 
@@ -264,110 +260,109 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
         await testContext.addContextItem(this, 'testIdentifier', `goBackToBO${index}`, baseContext);
 
         // Go back to BO
-        page = await foProductPage.closePage(browserContext, page, 0);
+        page = await foClassicProductPage.closePage(browserContext, page, 0);
 
-        const pageTitle = await createProductsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(createProductsPage.pageTitle);
+        const pageTitle = await boProductsCreatePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
       });
     });
 
     it('should click on edit default behaviour link', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'editBehaviour', baseContext);
 
-      page = await virtualProductTab.clickOnEditDefaultBehaviourLink(page);
+      page = await boProductsCreateTabVirtualProductPage.clickOnEditDefaultBehaviourLink(page);
 
-      const pageTitle = await productSettings.getPageTitle(page);
-      expect(pageTitle).to.contains(productSettings.pageTitle);
+      const pageTitle = await boProductSettingsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductSettingsPage.pageTitle);
     });
 
     it('should close the page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBO3', baseContext);
 
-      page = await productSettings.closePage(browserContext, page, 0);
+      page = await boProductSettingsPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should set label when in stock', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setLabelWhenInStock', baseContext);
 
-      await virtualProductTab.setProductQuantity(page, 100);
-      await virtualProductTab.setLabelWhenInStock(page, 'Product available');
+      await boProductsCreateTabVirtualProductPage.setProductQuantity(page, 100);
+      await boProductsCreateTabVirtualProductPage.setLabelWhenInStock(page, 'Product available');
 
-      const createProductMessage = await createProductsPage.saveProduct(page);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.saveProduct(page);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
 
     it('should preview product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'previewProduct3', baseContext);
 
       // Click on preview button
-      page = await createProductsPage.previewProduct(page);
+      page = await boProductsCreatePage.previewProduct(page);
 
-      await foProductPage.changeLanguage(page, 'en');
+      await foClassicProductPage.changeLanguage(page, 'en');
 
-      const pageTitle = await foProductPage.getPageTitle(page);
+      const pageTitle = await foClassicProductPage.getPageTitle(page);
       expect(pageTitle).to.contains(newProductData.name);
     });
 
     it('should check the product availability label', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkProductAvailableLabel', baseContext);
 
-      const availabilityLabel = await foProductPage.getProductAvailabilityLabel(page);
+      const availabilityLabel = await foClassicProductPage.getProductAvailabilityLabel(page);
       expect(availabilityLabel).to.contains('Product available');
     });
 
     it('should close the page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBO4', baseContext);
 
-      page = await foProductPage.closePage(browserContext, page, 0);
+      page = await foClassicProductPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should check the allow orders option and set Label when out of stock', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkDenyOrder', baseContext);
 
-      await virtualProductTab.setProductQuantity(page, -100);
-      await virtualProductTab.setOptionWhenOutOfStock(page, 'Allow orders');
+      await boProductsCreateTabVirtualProductPage.setProductQuantity(page, -100);
+      await boProductsCreateTabVirtualProductPage.setOptionWhenOutOfStock(page, 'Allow orders');
+      await boProductsCreateTabVirtualProductPage.setLabelWhenOutOfStock(page, 'Out of stock');
 
-      await virtualProductTab.setLabelWhenOutOfStock(page, 'Out of stock');
-
-      const createProductMessage = await createProductsPage.saveProduct(page);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.saveProduct(page);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
 
     it('should preview product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'previewProduct4', baseContext);
 
       // Click on preview button
-      page = await createProductsPage.previewProduct(page);
+      page = await boProductsCreatePage.previewProduct(page);
 
-      await foProductPage.changeLanguage(page, 'en');
+      await foClassicProductPage.changeLanguage(page, 'en');
 
-      const pageTitle = await foProductPage.getPageTitle(page);
+      const pageTitle = await foClassicProductPage.getPageTitle(page);
       expect(pageTitle).to.contains(newProductData.name);
     });
 
     it('should check the label of out of stock', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkLabelOutOfStock', baseContext);
 
-      const availabilityLabel = await foProductPage.getProductAvailabilityLabel(page);
+      const availabilityLabel = await foClassicProductPage.getProductAvailabilityLabel(page);
       expect(availabilityLabel).to.contains('Out of stock');
 
-      const isVisible = await foProductPage.isAddToCartButtonEnabled(page);
+      const isVisible = await foClassicProductPage.isAddToCartButtonEnabled(page);
       expect(isVisible).eq(true);
     });
 
     it('should close the page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBO5', baseContext);
 
-      page = await foProductPage.closePage(browserContext, page, 0);
+      page = await foClassicProductPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
   });
 
@@ -376,8 +371,8 @@ describe('BO - Catalog - Products : Virtual tab', async () => {
     it('should delete product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteProduct', baseContext);
 
-      const deleteProductMessage = await createProductsPage.deleteProduct(page);
-      expect(deleteProductMessage).to.equal(productsPage.successfulDeleteMessage);
+      const deleteProductMessage = await boProductsCreatePage.deleteProduct(page);
+      expect(deleteProductMessage).to.equal(boProductsPage.successfulDeleteMessage);
     });
   });
 });

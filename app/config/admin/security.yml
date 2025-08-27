@@ -35,7 +35,7 @@ security:
         success_handler: PrestaShopBundle\Security\Admin\AdminAuthenticationSuccessHandler
       remember_me:
         secret: "%kernel.secret%"
-        lifetime: 3600
+        lifetime: "%prestashop.admin_cookie_lifetime%"
         remember_me_parameter: stay_logged_in
         signature_properties: [ 'password' ]
       logout:
@@ -43,7 +43,9 @@ security:
         target: admin_login
 
   access_control:
-    - { path: ^/login, roles: PUBLIC_ACCESS }
-    - { path: ^/request-password-reset, roles: PUBLIC_ACCESS }
-    - { path: ^/reset-password, roles: PUBLIC_ACCESS }
-    - { path: ^/, roles: IS_AUTHENTICATED }
+    - { route: 'admin_login', roles: PUBLIC_ACCESS }
+    - { route: 'admin_homepage', roles: PUBLIC_ACCESS }
+    - { route: 'admin_request_password_reset', roles: PUBLIC_ACCESS }
+    - { route: 'admin_reset_password', roles: PUBLIC_ACCESS }
+    # Check it the legacy anonymous attribute has been set on the request (set by LegacyRouterChecker)
+    - { path: ^/, roles: IS_AUTHENTICATED, allow_if: 'request.attributes.has("_anonymous_controller") and request.attributes.get("_anonymous_controller") == true' }

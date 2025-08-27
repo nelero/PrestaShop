@@ -380,9 +380,9 @@ class Configuration extends ParameterBag implements ShopConfigurationInterface
         if (null !== $shopConstraint->getShopGroupId()) {
             return $shopConstraint->getShopGroupId()->getValue();
         } elseif (null !== $shopConstraint->getShopId()) {
-            $shopGroupId = Shop::getGroupFromShop((int) $shopConstraint->getShopId()->getValue(), true);
+            $shopGroupId = Shop::getGroupIdFromShopId((int) $shopConstraint->getShopId()->getValue());
             // $shopGroupId can not be false, it would mean that the shop group was not found for the given shop
-            if ($shopGroupId === false) {
+            if (empty($shopGroupId)) {
                 throw new ShopException(
                     sprintf(
                         'Shop group was not found for the shop with id %d.',
@@ -426,11 +426,6 @@ class Configuration extends ParameterBag implements ShopConfigurationInterface
      */
     private function buildShopConstraintFromContext(): ShopConstraint
     {
-        @trigger_error(
-            'Not specifying the optional ShopConstraint parameter is deprecated since version 1.7.8.0',
-            E_USER_DEPRECATED
-        );
-
         if (Shop::getContext() === Shop::CONTEXT_SHOP) {
             return ShopConstraint::shop(Shop::getContextShopID());
         } elseif (Shop::getContext() === Shop::CONTEXT_GROUP) {

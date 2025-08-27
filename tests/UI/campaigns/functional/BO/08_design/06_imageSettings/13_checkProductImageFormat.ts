@@ -1,28 +1,24 @@
-// Import utils
-import files from '@utils/files';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import commonTests
-import {deleteProductTest} from '@commonTests/BO/catalog/product';
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-import productsPage from '@pages/BO/catalog/products';
-import createProductsPage from '@pages/BO/catalog/products/add';
-import descriptionTab from '@pages/BO/catalog/products/add/descriptionTab';
-import dashboardPage from '@pages/BO/dashboard';
-import imageSettingsPage from '@pages/BO/design/imageSettings';
-// Import FO pages
-import {homePage} from '@pages/FO/classic/home';
-import {categoryPage} from '@pages/FO/classic/category';
-import {quickViewModal} from '@pages/FO/classic/modal/quickView';
-
-// Import data
-import ProductData from '@data/faker/product';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {deleteProductTest} from '@commonTests/BO/catalog/product';
+
+import {
+  boDashboardPage,
+  boImageSettingsPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  boProductsCreateTabDescriptionPage,
+  type BrowserContext,
+  FakerProduct,
+  foClassicCategoryPage,
+  foClassicHomePage,
+  foClassicModalQuickViewPage,
+  type Page,
+  utilsFile,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_design_imageSettings_checkProductImageFormat';
 
@@ -32,17 +28,17 @@ describe('BO - Design - Image Settings - Check product image format', async () =
   let idProduct: number = 0;
   let idProductImage: number = 0;
 
-  const productDataJPG: ProductData = new ProductData({
+  const productDataJPG: FakerProduct = new FakerProduct({
     type: 'standard',
     coverImage: 'coverJPG.jpg',
     status: true,
   });
-  const productDataPNG: ProductData = new ProductData({
+  const productDataPNG: FakerProduct = new FakerProduct({
     type: 'standard',
     coverImage: 'coverPNG.png',
     status: true,
   });
-  const productDataWEBP: ProductData = new ProductData({
+  const productDataWEBP: FakerProduct = new FakerProduct({
     type: 'standard',
     coverImage: 'coverWEBP.webp',
     status: true,
@@ -50,8 +46,8 @@ describe('BO - Design - Image Settings - Check product image format', async () =
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
     await Promise.all([
       productDataJPG.coverImage,
@@ -59,13 +55,13 @@ describe('BO - Design - Image Settings - Check product image format', async () =
       productDataWEBP.coverImage,
     ].map(async (image: string|null) => {
       if (image) {
-        await files.generateImage(image);
+        await utilsFile.generateImage(image);
       }
     }));
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
     await Promise.all([
       productDataJPG.coverImage,
@@ -73,50 +69,56 @@ describe('BO - Design - Image Settings - Check product image format', async () =
       productDataWEBP.coverImage,
     ].map(async (image: string|null) => {
       if (image) {
-        await files.deleteFile(image);
+        await utilsFile.deleteFile(image);
       }
     }));
   });
 
   describe('Enable WebP for image generation', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Design > Image Settings\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToImageSettingsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.designParentLink,
-        dashboardPage.imageSettingsLink,
+        boDashboardPage.designParentLink,
+        boDashboardPage.imageSettingsLink,
       );
-      await imageSettingsPage.closeSfToolBar(page);
+      await boImageSettingsPage.closeSfToolBar(page);
 
-      const pageTitle = await imageSettingsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(imageSettingsPage.pageTitle);
+      const pageTitle = await boImageSettingsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boImageSettingsPage.pageTitle);
     });
 
     it('should enable WebP image format', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'enableWebP', baseContext);
 
-      const result = await imageSettingsPage.setImageFormatToGenerateChecked(page, 'webp', true);
-      expect(result).to.be.eq(imageSettingsPage.messageSettingsUpdated);
+      const result = await boImageSettingsPage.setImageFormatToGenerateChecked(page, 'webp', true);
+      expect(result).to.be.eq(boImageSettingsPage.messageSettingsUpdated);
     });
 
     it('should check image generation options', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkImageGenerationOptions', baseContext);
 
       // JPEG/PNG should be checked
-      const jpegChecked = await imageSettingsPage.isImageFormatToGenerateChecked(page, 'jpg');
+      const jpegChecked = await boImageSettingsPage.isImageFormatToGenerateChecked(page, 'jpg');
       expect(jpegChecked).to.eq(true);
 
       // JPEG/PNG should be checked
-      const jpegDisabled = await imageSettingsPage.isImageFormatToGenerateDisabled(page, 'jpg');
+      const jpegDisabled = await boImageSettingsPage.isImageFormatToGenerateDisabled(page, 'jpg');
       expect(jpegDisabled).to.eq(true);
 
       // WebP should be checked
-      const webpChecked = await imageSettingsPage.isImageFormatToGenerateChecked(page, 'webp');
+      const webpChecked = await boImageSettingsPage.isImageFormatToGenerateChecked(page, 'webp');
       expect(webpChecked).to.eq(true);
     });
   });
@@ -140,38 +142,38 @@ describe('BO - Design - Image Settings - Check product image format', async () =
       extGenerated: 'jpg',
       extImageType: 'png',
     },
-  ].forEach((arg: {product: ProductData, extOriginal: string, extGenerated: string, extImageType: string}, index: number) => {
+  ].forEach((arg: {product: FakerProduct, extOriginal: string, extGenerated: string, extImageType: string}, index: number) => {
     describe(`Image Generation - Product - Image Format : ${arg.extOriginal.toUpperCase()}`, async () => {
       if (index) {
         it('should go to BO', async function () {
           await testContext.addContextItem(this, 'testIdentifier', `goToBoProducts${arg.extOriginal}`, baseContext);
 
-          page = await categoryPage.closePage(browserContext, page, 0);
-          await categoryPage.goToBO(page);
+          page = await foClassicCategoryPage.closePage(browserContext, page, 0);
+          await foClassicCategoryPage.goToBO(page);
 
-          const pageTitle = await dashboardPage.getPageTitle(page);
-          expect(pageTitle).to.contains(dashboardPage.pageTitle);
+          const pageTitle = await boDashboardPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boDashboardPage.pageTitle);
         });
       }
       it('should go to \'Catalog > Products\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToProductsPage${arg.extOriginal}`, baseContext);
 
-        await dashboardPage.goToSubMenu(
+        await boDashboardPage.goToSubMenu(
           page,
-          dashboardPage.catalogParentLink,
-          dashboardPage.productsLink,
+          boDashboardPage.catalogParentLink,
+          boDashboardPage.productsLink,
         );
 
-        await productsPage.closeSfToolBar(page);
+        await boProductsPage.closeSfToolBar(page);
 
-        const pageTitle = await productsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(productsPage.pageTitle);
+        const pageTitle = await boProductsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsPage.pageTitle);
       });
 
       it('should click on \'New product\' button and check new product modal', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `clickOnNewProductButton${arg.extOriginal}`, baseContext);
 
-        const isModalVisible = await productsPage.clickOnNewProductButton(page);
+        const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
         expect(isModalVisible).to.eq(true);
       });
 
@@ -183,45 +185,45 @@ describe('BO - Design - Image Settings - Check product image format', async () =
           baseContext,
         );
 
-        const productTypeDescription = await productsPage.getProductDescription(page);
-        expect(productTypeDescription).to.contains(productsPage.standardProductDescription);
+        const productTypeDescription = await boProductsPage.getProductDescription(page);
+        expect(productTypeDescription).to.contains(boProductsPage.standardProductDescription);
       });
 
       it('should choose \'Standard product\'', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `chooseStandardProduct${arg.extOriginal}`, baseContext);
 
-        await productsPage.selectProductType(page, arg.product.type);
+        await boProductsPage.selectProductType(page, arg.product.type);
 
-        const pageTitle = await createProductsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(createProductsPage.pageTitle);
+        const pageTitle = await boProductsCreatePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
       });
 
       it('should go to new product page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToNewProductPage${arg.extOriginal}`, baseContext);
 
-        await productsPage.clickOnAddNewProduct(page);
+        await boProductsPage.clickOnAddNewProduct(page);
 
-        const pageTitle = await createProductsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(createProductsPage.pageTitle);
+        const pageTitle = await boProductsCreatePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
       });
 
       it('should create standard product', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `createStandardProduct${arg.extOriginal}`, baseContext);
 
-        await createProductsPage.closeSfToolBar(page);
+        await boProductsCreatePage.closeSfToolBar(page);
 
-        const createProductMessage = await createProductsPage.setProduct(page, arg.product);
-        expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+        const createProductMessage = await boProductsCreatePage.setProduct(page, arg.product);
+        expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
       });
 
       it('should check that the save button is changed to \'Save and publish\'', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkSaveButton${arg.extOriginal}`, baseContext);
 
-        const saveButtonName = await createProductsPage.getSaveButtonName(page);
+        const saveButtonName = await boProductsCreatePage.getSaveButtonName(page);
         expect(saveButtonName).to.equal('Save and publish');
 
-        idProduct = await createProductsPage.getProductID(page);
-        idProductImage = await descriptionTab.getProductIDImageCover(page);
+        idProduct = await boProductsCreatePage.getProductID(page);
+        idProductImage = await boProductsCreateTabDescriptionPage.getProductIDImageCover(page);
         expect(idProduct).to.be.gt(0);
       });
 
@@ -237,78 +239,78 @@ describe('BO - Design - Image Settings - Check product image format', async () =
         const pathProductId: string = pathProductIdSplitted.join('/');
 
         // Check the original file
-        const pathImageOriginal: string = `${files.getRootPath()}/img/p/${pathProductId}/${idProductImage}.jpg`;
+        const pathImageOriginal: string = `${utilsFile.getRootPath()}/img/p/${pathProductId}/${idProductImage}.jpg`;
 
-        const fileExistsOriginal = await files.doesFileExist(pathImageOriginal);
+        const fileExistsOriginal = await utilsFile.doesFileExist(pathImageOriginal);
         expect(fileExistsOriginal, `The file ${pathImageOriginal} doesn't exist!`).to.eq(true);
 
-        const imageTypeOriginal = await files.getFileType(pathImageOriginal);
+        const imageTypeOriginal = await utilsFile.getFileType(pathImageOriginal);
         expect(imageTypeOriginal).to.be.eq(arg.extImageType);
 
         // Check the Jpg file
-        const pathImageJPG: string = `${files.getRootPath()}/img/p/${pathProductId}/${idProductImage}-large_default.jpg`;
+        const pathImageJPG: string = `${utilsFile.getRootPath()}/img/p/${pathProductId}/${idProductImage}-large_default.jpg`;
 
-        const fileExistsJPG = await files.doesFileExist(pathImageJPG);
+        const fileExistsJPG = await utilsFile.doesFileExist(pathImageJPG);
         expect(fileExistsJPG, `The file ${pathImageJPG} doesn't exist!`).to.eq(true);
 
-        const imageTypeJPG = await files.getFileType(pathImageJPG);
+        const imageTypeJPG = await utilsFile.getFileType(pathImageJPG);
         expect(imageTypeJPG).to.be.eq(arg.extImageType);
 
         // Check the WebP file
-        const pathImageWEBP: string = `${files.getRootPath()}/img/p/${pathProductId}/${idProductImage}-large_default.webp`;
+        const pathImageWEBP: string = `${utilsFile.getRootPath()}/img/p/${pathProductId}/${idProductImage}-large_default.webp`;
 
-        const fileExistsWEBP = await files.doesFileExist(pathImageWEBP);
+        const fileExistsWEBP = await utilsFile.doesFileExist(pathImageWEBP);
         expect(fileExistsWEBP, `The file ${pathImageWEBP} doesn't exist!`).to.eq(true);
 
-        const imageTypeWEBP = await files.getFileType(pathImageWEBP);
+        const imageTypeWEBP = await utilsFile.getFileType(pathImageWEBP);
         expect(imageTypeWEBP).to.be.eq('webp');
       });
 
       it('should go to FO page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToFo${arg.extOriginal}`, baseContext);
 
-        page = await createProductsPage.viewMyShop(page);
-        await homePage.changeLanguage(page, 'en');
+        page = await boProductsCreatePage.viewMyShop(page);
+        await foClassicHomePage.changeLanguage(page, 'en');
 
-        const isHomePage = await homePage.isHomePage(page);
+        const isHomePage = await foClassicHomePage.isHomePage(page);
         expect(isHomePage, 'Fail to open FO home page').to.eq(true);
       });
 
       it('should go to all products page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToAllProducts${arg.extOriginal}`, baseContext);
 
-        await homePage.goToAllProductsPage(page);
+        await foClassicHomePage.goToAllProductsPage(page);
 
-        const isCategoryPageVisible = await categoryPage.isCategoryPage(page);
+        const isCategoryPageVisible = await foClassicCategoryPage.isCategoryPage(page);
         expect(isCategoryPageVisible, 'Home category page was not opened').to.eq(true);
       });
 
       it(`should go to the second page and quick view the product '${arg.product.name}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `quickViewCustomizedProduct${arg.extOriginal}`, baseContext);
 
-        await categoryPage.goToNextPage(page);
+        await foClassicCategoryPage.goToNextPage(page);
 
-        const nthProduct: number|null = await categoryPage.getNThChildFromIDProduct(page, idProduct);
+        const nthProduct: number|null = await foClassicCategoryPage.getNThChildFromIDProduct(page, idProduct);
         expect(nthProduct).to.not.eq(null);
 
-        await categoryPage.quickViewProduct(page, nthProduct as number);
+        await foClassicCategoryPage.quickViewProduct(page, nthProduct as number);
 
-        const isModalVisible = await quickViewModal.isQuickViewProductModalVisible(page);
+        const isModalVisible = await foClassicModalQuickViewPage.isQuickViewProductModalVisible(page);
         expect(isModalVisible).to.eq(true);
       });
 
       it('should check that the main image of the quick view is a WebP', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkMainImageQuickView${arg.extOriginal}`, baseContext);
 
-        const quickViewImageMain = await quickViewModal.getQuickViewImageMain(page);
+        const quickViewImageMain = await foClassicModalQuickViewPage.getQuickViewImageMain(page);
         expect(quickViewImageMain).to.not.eq(null);
 
-        await files.downloadFile(quickViewImageMain as string, 'image.img');
+        await utilsFile.downloadFile(quickViewImageMain as string, 'image.img');
 
-        const quickViewImageMainType = await files.getFileType('image.img');
+        const quickViewImageMainType = await utilsFile.getFileType('image.img');
         expect(quickViewImageMainType).to.be.eq('webp');
 
-        await files.deleteFile('image.img');
+        await utilsFile.deleteFile('image.img');
       });
     });
   });
@@ -327,7 +329,7 @@ describe('BO - Design - Image Settings - Check product image format', async () =
       product: productDataWEBP,
       extension: 'webp',
     },
-  ].forEach((arg: {product: ProductData, extension: string}) => {
+  ].forEach((arg: {product: FakerProduct, extension: string}) => {
     deleteProductTest(arg.product, `${baseContext}_removeProduct${arg.extension}`);
   });
 });

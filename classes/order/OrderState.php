@@ -104,9 +104,9 @@ class OrderStateCore extends ObjectModel
         'multilang' => true,
         'fields' => [
             'send_email' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
-            'module_name' => ['type' => self::TYPE_STRING, 'validate' => 'isModuleName'],
+            'module_name' => ['type' => self::TYPE_STRING, 'validate' => 'isModuleName', 'size' => 255],
             'invoice' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
-            'color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor'],
+            'color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor', 'size' => 32],
             'logable' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
             'shipped' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
             'unremovable' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
@@ -136,6 +136,7 @@ class OrderStateCore extends ObjectModel
     public const FLAG_DELIVERY = 4;  /* 00100 */
     public const FLAG_SHIPPED = 8;  /* 01000 */
     public const FLAG_PAID = 16; /* 10000 */
+    public const FLAG_EMAIL = 32; /* 100000 */
 
     /**
      * Get all available order statuses.

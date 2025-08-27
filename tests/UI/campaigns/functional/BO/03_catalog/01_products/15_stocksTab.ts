@@ -1,28 +1,22 @@
-// Import utils
-import date from '@utils/date';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import common tests
 import {deleteProductTest} from '@commonTests/BO/catalog/product';
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import productsPage from '@pages/BO/catalog/products';
-import createProductPage from '@pages/BO/catalog/products/add';
-import stocksTab from '@pages/BO/catalog/products/add/stocksTab';
-import movementsPage from '@pages/BO/catalog/stocks/movements';
-
-// Import FO pages
-import {productPage as foProductPage} from '@pages/FO/classic/product';
-
-// Import data
-import Employees from '@data/demo/employees';
-import ProductData from '@data/faker/product';
-
-import type {BrowserContext, Page} from 'playwright';
 import {expect} from 'chai';
+
+import {
+  boDashboardPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  boProductsCreateTabStocksPage,
+  boStockMovementsPage,
+  type BrowserContext,
+  dataEmployees,
+  FakerProduct,
+  foClassicProductPage,
+  type Page,
+  utilsDate,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_catalog_products_stocksTab';
 
@@ -30,7 +24,7 @@ describe('BO - Catalog - Products : Stocks tab', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
-  const newProductData: ProductData = new ProductData({
+  const newProductData: FakerProduct = new FakerProduct({
     type: 'standard',
     status: true,
     quantity: 0,
@@ -42,61 +36,67 @@ describe('BO - Catalog - Products : Stocks tab', async () => {
   const productLowStockThreshold: number = 3;
   const productLabelWhenInStock: string = 'LABEL IN STOCK';
   const productLabelWhenOutOfStock: string = 'LABEL OUT OF STOCK';
-  const todayDate: string = date.getDateFormat('yyyy-mm-dd');
+  const todayDate: string = utilsDate.getDateFormat('yyyy-mm-dd');
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   // 1 - Create product
   describe('Create product', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Catalog > Products\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.catalogParentLink,
-        dashboardPage.productsLink,
+        boDashboardPage.catalogParentLink,
+        boDashboardPage.productsLink,
       );
 
-      await productsPage.closeSfToolBar(page);
+      await boProductsPage.closeSfToolBar(page);
 
-      const pageTitle = await productsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(productsPage.pageTitle);
+      const pageTitle = await boProductsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsPage.pageTitle);
     });
 
     it('should click on \'New product\' button and check new product modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewProductButton', baseContext);
 
-      const isModalVisible = await productsPage.clickOnNewProductButton(page);
+      const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
       expect(isModalVisible).to.eq(true);
     });
 
     it('should choose \'Standard product\' and go to new product page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'chooseStandardProduct', baseContext);
 
-      await productsPage.selectProductType(page, newProductData.type);
-      await productsPage.clickOnAddNewProduct(page);
+      await boProductsPage.selectProductType(page, newProductData.type);
+      await boProductsPage.clickOnAddNewProduct(page);
 
-      const pageTitle = await createProductPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should create standard product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createStandardProduct', baseContext);
 
-      const createProductMessage = await createProductPage.setProduct(page, newProductData);
-      expect(createProductMessage).to.equal(createProductPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.setProduct(page, newProductData);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
   });
 
@@ -105,31 +105,31 @@ describe('BO - Catalog - Products : Stocks tab', async () => {
     it('should go to the Stocks tab', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToStocksTab', baseContext);
 
-      await createProductPage.goToTab(page, 'stock');
+      await boProductsCreatePage.goToTab(page, 'stock');
 
-      const isTabActive = await createProductPage.isTabActive(page, 'stock');
+      const isTabActive = await boProductsCreatePage.isTabActive(page, 'stock');
       expect(isTabActive).to.eq(true);
     });
 
     it('should add quantity to stock', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addQuantityToStock', baseContext);
 
-      await stocksTab.setQuantityDelta(page, productQuantity);
+      await boProductsCreateTabStocksPage.setQuantityDelta(page, productQuantity);
 
-      const message = await createProductPage.saveProduct(page);
-      expect(message).to.eq(createProductPage.successfulUpdateMessage);
+      const message = await boProductsCreatePage.saveProduct(page);
+      expect(message).to.eq(boProductsCreatePage.successfulUpdateMessage);
 
-      const productHeaderSummary = await createProductPage.getProductHeaderSummary(page);
+      const productHeaderSummary = await boProductsCreatePage.getProductHeaderSummary(page);
       expect(productHeaderSummary.quantity).to.equal(`${productQuantity} in stock`);
     });
 
     it('should check the recent stock movement', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkStockMovement', baseContext);
 
-      const result = await stocksTab.getStockMovement(page, 1);
+      const result = await boProductsCreateTabStocksPage.getStockMovement(page, 1);
       await Promise.all([
         expect(result.dateTime).to.contains(todayDate),
-        expect(result.employee).to.equal(`${Employees.DefaultEmployee.firstName} ${Employees.DefaultEmployee.lastName}`),
+        expect(result.employee).to.equal(`${dataEmployees.defaultEmployee.firstName} ${dataEmployees.defaultEmployee.lastName}`),
         expect(result.quantity).to.equal(productQuantity),
       ]);
     });
@@ -137,69 +137,69 @@ describe('BO - Catalog - Products : Stocks tab', async () => {
     it('should click on View all stock movements', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickViewAllStockMovements', baseContext);
 
-      page = await stocksTab.clickViewAllStockMovements(page);
+      page = await boProductsCreateTabStocksPage.clickViewAllStockMovements(page);
 
-      const pageTitle = await movementsPage.getPageTitle(page);
-      expect(pageTitle).to.equal(movementsPage.pageTitle);
+      const pageTitle = await boStockMovementsPage.getPageTitle(page);
+      expect(pageTitle).to.equal(boStockMovementsPage.pageTitle);
     });
 
     it('should close the Stock Movements page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'closeStockMovementsPage', baseContext);
 
-      page = await movementsPage.closePage(browserContext, page, 0);
+      page = await boStockMovementsPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await createProductPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should fill Stocks values', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'fillStockValues', baseContext);
 
-      await stocksTab.setMinimalQuantity(page, productMinimalQuantity);
-      await stocksTab.setStockLocation(page, productStockLocation);
-      await stocksTab.setLowStockAlertByEmail(page, productLowStockAlertByEmail, productLowStockThreshold);
+      await boProductsCreateTabStocksPage.setMinimalQuantity(page, productMinimalQuantity);
+      await boProductsCreateTabStocksPage.setStockLocation(page, productStockLocation);
+      await boProductsCreateTabStocksPage.setLowStockAlertByEmail(page, productLowStockAlertByEmail, productLowStockThreshold);
 
-      const message = await createProductPage.saveProduct(page);
-      expect(message).to.eq(createProductPage.successfulUpdateMessage);
+      const message = await boProductsCreatePage.saveProduct(page);
+      expect(message).to.eq(boProductsCreatePage.successfulUpdateMessage);
     });
 
     it('should check Stocks values', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkStockValues', baseContext);
 
-      const valueMinimalQuantity = await stocksTab.getValue(page, 'minimal_quantity');
+      const valueMinimalQuantity = await boProductsCreateTabStocksPage.getValue(page, 'minimal_quantity');
       expect(valueMinimalQuantity).to.eq(productMinimalQuantity.toString());
 
-      const valueStockLocation = await stocksTab.getValue(page, 'location');
+      const valueStockLocation = await boProductsCreateTabStocksPage.getValue(page, 'location');
       expect(valueStockLocation).to.eq(productStockLocation);
 
-      const valueLowStockAlertByEmail = await stocksTab.getValue(page, 'low_stock_threshold_enabled');
+      const valueLowStockAlertByEmail = await boProductsCreateTabStocksPage.getValue(page, 'low_stock_threshold_enabled');
       expect(valueLowStockAlertByEmail).to.eq(productLowStockAlertByEmail ? '1' : '0');
 
-      const valueLowStockThreshold = await stocksTab.getValue(page, 'low_stock_threshold');
+      const valueLowStockThreshold = await boProductsCreateTabStocksPage.getValue(page, 'low_stock_threshold');
       expect(valueLowStockThreshold).to.eq(productLowStockThreshold.toString());
     });
 
     it('should fill When out of stock values', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'fillWhenOutOfStockValues', baseContext);
 
-      await stocksTab.setLabelWhenInStock(page, productLabelWhenInStock);
-      await stocksTab.setLabelWhenOutOfStock(page, productLabelWhenOutOfStock);
-      await stocksTab.setAvailabilityDate(page, todayDate);
+      await boProductsCreateTabStocksPage.setLabelWhenInStock(page, productLabelWhenInStock);
+      await boProductsCreateTabStocksPage.setLabelWhenOutOfStock(page, productLabelWhenOutOfStock);
+      await boProductsCreateTabStocksPage.setAvailabilityDate(page, todayDate);
 
-      const message = await createProductPage.saveProduct(page);
-      expect(message).to.eq(createProductPage.successfulUpdateMessage);
+      const message = await boProductsCreatePage.saveProduct(page);
+      expect(message).to.eq(boProductsCreatePage.successfulUpdateMessage);
     });
 
     it('should check When out of stock values', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkWhenOutOfStockValues', baseContext);
 
-      const valueLabelWhenInStock = await stocksTab.getValue(page, 'available_now', '1');
+      const valueLabelWhenInStock = await boProductsCreateTabStocksPage.getValue(page, 'available_now', '1');
       expect(valueLabelWhenInStock).to.eq(productLabelWhenInStock);
 
-      const valueLabelWhenOutOfStock = await stocksTab.getValue(page, 'available_later', '1');
+      const valueLabelWhenOutOfStock = await boProductsCreateTabStocksPage.getValue(page, 'available_later', '1');
       expect(valueLabelWhenOutOfStock).to.eq(productLabelWhenOutOfStock);
 
-      const valueAvailabilityDate = await stocksTab.getValue(page, 'available_date');
+      const valueAvailabilityDate = await boProductsCreateTabStocksPage.getValue(page, 'available_date');
       expect(valueAvailabilityDate).to.eq(todayDate);
     });
 
@@ -207,10 +207,10 @@ describe('BO - Catalog - Products : Stocks tab', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'previewProduct1', baseContext);
 
       // Click on preview button
-      page = await createProductPage.previewProduct(page);
-      await foProductPage.changeLanguage(page, 'en');
+      page = await boProductsCreatePage.previewProduct(page);
+      await foClassicProductPage.changeLanguage(page, 'en');
 
-      const pageTitle: string = await foProductPage.getPageTitle(page);
+      const pageTitle: string = await foClassicProductPage.getPageTitle(page);
       expect(pageTitle).to.contains(newProductData.name);
     });
 
@@ -218,12 +218,12 @@ describe('BO - Catalog - Products : Stocks tab', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'addProductToCart1', baseContext);
 
       // Add the product to the cart
-      await foProductPage.addProductToTheCart(page, productMinimalQuantity, [], false);
+      await foClassicProductPage.addProductToTheCart(page, productMinimalQuantity, [], false);
 
-      const notificationsNumber = await foProductPage.getCartNotificationsNumber(page);
+      const notificationsNumber = await foClassicProductPage.getCartNotificationsNumber(page);
       expect(notificationsNumber).to.be.equal(productMinimalQuantity);
 
-      const productAvailability = await foProductPage.getProductAvailabilityLabel(page);
+      const productAvailability = await foClassicProductPage.getProductAvailabilityLabel(page);
       expect(productAvailability).to.be.contains(productLabelWhenInStock);
     });
 
@@ -231,28 +231,28 @@ describe('BO - Catalog - Products : Stocks tab', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBackOffice', baseContext);
 
       // Go back to BO
-      page = await foProductPage.closePage(browserContext, page, 0);
+      page = await foClassicProductPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await createProductPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should check the deny orders option', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkDenyOrder', baseContext);
 
-      await stocksTab.setQuantityDelta(page, productQuantity * -1);
-      await stocksTab.setOptionWhenOutOfStock(page, 'Deny orders');
+      await boProductsCreateTabStocksPage.setQuantityDelta(page, productQuantity * -1);
+      await boProductsCreateTabStocksPage.setOptionWhenOutOfStock(page, 'Deny orders');
 
-      const createProductMessage = await createProductPage.saveProduct(page);
-      expect(createProductMessage).to.equal(createProductPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.saveProduct(page);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
 
-      const productHeaderSummary = await createProductPage.getProductHeaderSummary(page);
+      const productHeaderSummary = await boProductsCreatePage.getProductHeaderSummary(page);
       expect(productHeaderSummary.quantity).to.equal('0 out of stock');
 
-      const result = await stocksTab.getStockMovement(page, 1);
+      const result = await boProductsCreateTabStocksPage.getStockMovement(page, 1);
       await Promise.all([
         expect(result.dateTime).to.contains(todayDate),
-        expect(result.employee).to.equal(`${Employees.DefaultEmployee.firstName} ${Employees.DefaultEmployee.lastName}`),
+        expect(result.employee).to.equal(`${dataEmployees.defaultEmployee.firstName} ${dataEmployees.defaultEmployee.lastName}`),
         expect(result.quantity).to.equal(productQuantity * -1),
       ]);
     });
@@ -261,60 +261,60 @@ describe('BO - Catalog - Products : Stocks tab', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'previewProduct2', baseContext);
 
       // Click on preview button
-      page = await createProductPage.previewProduct(page);
-      await foProductPage.changeLanguage(page, 'en');
+      page = await boProductsCreatePage.previewProduct(page);
+      await foClassicProductPage.changeLanguage(page, 'en');
 
-      const pageTitle: string = await foProductPage.getPageTitle(page);
+      const pageTitle: string = await foClassicProductPage.getPageTitle(page);
       expect(pageTitle).to.contains(newProductData.name);
     });
 
     it('should check that the Add to cart Button is disabled', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'tryAddProductToCart', baseContext);
 
-      const isAddToCartButtonEnabled = await foProductPage.isAddToCartButtonEnabled(page);
+      const isAddToCartButtonEnabled = await foClassicProductPage.isAddToCartButtonEnabled(page);
       expect(isAddToCartButtonEnabled).to.be.equal(false);
 
-      const productAvailability = await foProductPage.getProductAvailabilityLabel(page);
-      expect(productAvailability).to.be.contains('Out-of-Stock');
+      const productAvailability = await foClassicProductPage.getProductAvailabilityLabel(page);
+      expect(productAvailability).to.be.contains('OUT OF STOCK');
     });
 
     it('should go back to BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBackOffice2', baseContext);
 
       // Go back to BO
-      page = await foProductPage.closePage(browserContext, page, 0);
+      page = await foClassicProductPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await createProductPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should check the allow orders option and set Label when out of stock', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkAllowOrder', baseContext);
 
-      await stocksTab.setOptionWhenOutOfStock(page, 'Allow orders');
+      await boProductsCreateTabStocksPage.setOptionWhenOutOfStock(page, 'Allow orders');
 
-      const createProductMessage = await createProductPage.saveProduct(page);
-      expect(createProductMessage).to.equal(createProductPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.saveProduct(page);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
 
     it('should preview product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'previewProduct3', baseContext);
 
       // Click on preview button
-      page = await createProductPage.previewProduct(page);
-      await foProductPage.changeLanguage(page, 'en');
+      page = await boProductsCreatePage.previewProduct(page);
+      await foClassicProductPage.changeLanguage(page, 'en');
 
-      const pageTitle: string = await foProductPage.getPageTitle(page);
+      const pageTitle: string = await foClassicProductPage.getPageTitle(page);
       expect(pageTitle).to.contains(newProductData.name);
     });
 
     it('should check that the Add to cart Button is enabled', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addProductToCart', baseContext);
 
-      const isAddToCartButtonEnabled = await foProductPage.isAddToCartButtonEnabled(page);
+      const isAddToCartButtonEnabled = await foClassicProductPage.isAddToCartButtonEnabled(page);
       expect(isAddToCartButtonEnabled).to.be.equal(true);
 
-      const productAvailability = await foProductPage.getProductAvailabilityLabel(page);
+      const productAvailability = await foClassicProductPage.getProductAvailabilityLabel(page);
       expect(productAvailability).to.be.contains(productLabelWhenOutOfStock);
     });
   });

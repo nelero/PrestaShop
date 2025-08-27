@@ -32,7 +32,7 @@
   <meta charset="utf-8">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="icon" type="image/x-icon" href="{$img_dir}favicon.ico" />
   <link rel="apple-touch-icon" href="{$img_dir}app_icon.png" />
 
@@ -65,7 +65,7 @@
 		var from_msg = '{l|escape s='From:' js=1 d='Admin.Global'} ';
 		var see_order_msg = '{l|escape s='View this order' js=1 d='Admin.Orderscustomers.Feature'}';
 		var new_customer_msg = '{l|escape s='A new customer registered on your store.' js=1 d='Admin.Navigation.Header'}';
-        var customer_name_msg = '{l|escape s='registered' js=1 d='Admin.Navigation.Notification'} ';
+    var customer_name_msg = '{l|escape s='Registered on:' js=1 d='Admin.Navigation.Notification'} ';
 		var new_msg = '{l|escape s='A new message was posted on your store.' js=1 d='Admin.Navigation.Header'}';
 		var see_msg = '{l|escape s='Read this message' js=1 d='Admin.Navigation.Header'}';
 		var token = '{$token|addslashes}';
@@ -262,9 +262,7 @@
              data-html="true"
              title="{$smarty.capture.title|htmlspecialchars}"
           >
-            <i class="material-icons"
-               style="{if isset($maintenance_allow_admins)}color: #72c279;{/if}"
-            >build</i>
+            <i class="material-icons">build</i>
             <span>{l|escape s='Maintenance mode' d='Admin.Navigation.Header'}</span>
           </a>
         </div>
@@ -282,7 +280,6 @@
             )}
               <ul id="header_shop" class="shop-state">
                 <li class="dropdown">
-                  <i class="material-icons">visibility</i>
                   <span>{$shop_list}</span>
                 </li>
               </ul>

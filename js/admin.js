@@ -321,20 +321,6 @@ function gencode(size)
   }
 }
 
-var tpl_viewing_window = null;
-function viewTemplates(id_select, lang, ext)
-{
-  var loc = $(id_select).val();
-  if (loc != 0)
-  {
-    if (tpl_viewing_window != null && !tpl_viewing_window.closed)
-      tpl_viewing_window.close();
-    var url_preview = $("option[value="+loc+"]", id_select).data('preview');
-    tpl_viewing_window = window.open(url_preview + lang + loc + ext, 'tpl_viewing', 'toolbar=0,location=0,directories=0,statfr=no,menubar=0,scrollbars=yes,resizable=yes,width=520,height=400,top=50,left=300');
-    tpl_viewing_window.focus();
-  }
-}
-
 function orderDeleteProduct(txtConfirm, txtExplain)
 {
   ret = true;
@@ -729,6 +715,11 @@ $(function()
       clearTimeout(ajax_running_timeout);
     });
 
+  // Ensure the spinner is hidden if no AJAX requests are running when the page loads
+  if ($.active === 0) {
+    $('#ajax_running').hide();
+  }
+
   //Check filters value on submit filter
   $("[name='submitFilter']").on('click', function(event) {
     var list_id = $(this).data('list-id');
@@ -1103,11 +1094,16 @@ function ajaxStates(id_state_selected)
 }
 
 function dniRequired() {
+  var countryId = $('#id_country').val();
+  if (!countryId) {
+    return;
+  }
+
   $.ajax({
     url: 'index.php',
     dataType: 'json',
     cache: false,
-    data: 'token=' + address_token + '&ajax=1&dni_required=1&controller=AdminAddresses&id_country=' + $('#id_country').val(),
+    data: 'token=' + address_token + '&ajax=1&dni_required=1&controller=AdminAddresses&id_country=' + countryId,
     success: function(resp) {
       if (resp && resp.dni_required) {
         $("#dni_required").fadeIn();

@@ -1,16 +1,17 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
 
 // Import common tests
-import {installHummingbird, uninstallHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import pages
-import homePage from '@pages/FO/hummingbird/home';
-import quickViewModal from '@pages/FO/hummingbird/modal/quickView';
+import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+import {
+  type BrowserContext,
+  foHummingbirdHomePage,
+  foHummingbirdModalQuickViewPage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_hummingbird_productPage_quickView_shareLinks';
 
@@ -29,34 +30,34 @@ describe('FO - Product page - Quick view : Share links', async () => {
   let page: Page;
 
   // Pre-condition : Install Hummingbird
-  installHummingbird(`${baseContext}_preTest`);
+  enableHummingbird(`${baseContext}_preTest`);
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Check share links', async () => {
     it('should go to FO home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFo', baseContext);
 
-      await homePage.goToFo(page);
+      await foHummingbirdHomePage.goToFo(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage).to.eq(true);
     });
 
     it('should quick view the third product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'quickView', baseContext);
 
-      await homePage.quickViewProduct(page, 3);
+      await foHummingbirdHomePage.quickViewProduct(page, 3);
 
-      const isModalVisible = await quickViewModal.isQuickViewProductModalVisible(page);
+      const isModalVisible = await foHummingbirdModalQuickViewPage.isQuickViewProductModalVisible(page);
       expect(isModalVisible).to.eq(true);
     });
 
@@ -97,12 +98,12 @@ describe('FO - Product page - Quick view : Share links', async () => {
       it(`should check the share link '${test.args.name}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkLink${index}`, baseContext);
 
-        const url = await quickViewModal.getSocialSharingLink(page, test.args.name);
+        const url = await foHummingbirdModalQuickViewPage.getSocialSharingLink(page, test.args.name);
         expect(url).to.contain(test.result.url);
       });
     });
   });
 
   // Post-condition : Uninstall Hummingbird
-  uninstallHummingbird(`${baseContext}_postTest`);
+  disableHummingbird(`${baseContext}_postTest`);
 });

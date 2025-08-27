@@ -52,7 +52,7 @@ class OrderConfirmationControllerCore extends FrontController
      *
      * @see FrontController::init()
      */
-    public function init()
+    public function init(): void
     {
         // Test below to prevent unnecessary logs from "parent::init()"
         $this->id_cart = (int) Tools::getValue('id_cart', 0);
@@ -90,7 +90,11 @@ class OrderConfirmationControllerCore extends FrontController
         // The confirmation link must contain a unique order secure key matching the key saved in database,
         // this prevents user to view other customer's order confirmations
         if (!$this->id_order || !$this->id_module || !$this->secure_key || empty($this->secure_key)) {
-            Tools::redirect($redirectLink . (Tools::isSubmit('slowvalidation') ? '&slowvalidation' : ''));
+            if (Tools::isSubmit('slowvalidation')) {
+                Tools::redirect($this->context->link->getPageLink('history', null, null, ['slowvalidation' => '1']));
+            } else {
+                Tools::redirect($redirectLink);
+            }
         }
 
         if (!Validate::isLoadedObject($this->order) || $this->secure_key != $this->order->secure_key) {
@@ -119,7 +123,7 @@ class OrderConfirmationControllerCore extends FrontController
      *
      * @see FrontController::postProcess()
      */
-    public function postProcess()
+    public function postProcess(): void
     {
         if (Tools::isSubmit('submitTransformGuestToCustomer')) {
             // Only variable we need is the password
@@ -181,9 +185,19 @@ class OrderConfirmationControllerCore extends FrontController
                 return;
             }
 
+            // Prevent error
+            // A) either on page refresh
+            // B) if we already transformed him in other window or through backoffice
             if ($this->customer->is_guest == 0) {
                 $this->errors[] = $this->trans(
                     'A customer account has already been created from this guest account. Please sign in.',
+                    [],
+                    'Shop.Notifications.Error'
+                );
+            // Check if a different customer with the same email was not already created in a different window or through backoffice
+            } elseif (Customer::customerExists($this->customer->email)) {
+                $this->errors[] = $this->trans(
+                    'You can\'t transform your account into a customer account, because a registered customer with the same email already exists.',
                     [],
                     'Shop.Notifications.Error'
                 );
@@ -209,7 +223,7 @@ class OrderConfirmationControllerCore extends FrontController
      *
      * @see FrontController::initContent()
      */
-    public function initContent()
+    public function initContent(): void
     {
         parent::initContent();
 
@@ -252,7 +266,7 @@ class OrderConfirmationControllerCore extends FrontController
     /**
      * Check if an order is free and create it.
      */
-    protected function checkFreeOrder()
+    protected function checkFreeOrder(): void
     {
         $cart = $this->context->cart;
         if ($cart->id_customer == 0 || $cart->id_address_delivery == 0 || $cart->id_address_invoice == 0) {
@@ -299,7 +313,7 @@ class OrderConfirmationControllerCore extends FrontController
         ));
     }
 
-    public function getBreadcrumbLinks()
+    public function getBreadcrumbLinks(): array
     {
         $breadcrumb = parent::getBreadcrumbLinks();
 
@@ -314,7 +328,7 @@ class OrderConfirmationControllerCore extends FrontController
     /**
      * @return Order
      */
-    public function getOrder()
+    public function getOrder(): Order
     {
         return $this->order;
     }
@@ -322,7 +336,7 @@ class OrderConfirmationControllerCore extends FrontController
     /**
      * @return Customer
      */
-    public function getCustomer()
+    public function getCustomer(): Customer
     {
         return $this->customer;
     }

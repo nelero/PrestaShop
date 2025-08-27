@@ -1,27 +1,22 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import carriersPage from '@pages/BO/shipping/carriers';
-import preferencesPage from '@pages/BO/shipping/preferences';
-
-// Import FO pages
-import {homePage} from '@pages/FO/classic/home';
-import {productPage} from '@pages/FO/classic/product';
-import {cartPage} from '@pages/FO/classic/cart';
-import {checkoutPage} from '@pages/FO/classic/checkout';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
-// Import data
-import {dataCustomers} from '@prestashop-core/ui-testing';
-import Carriers from '@data/demo/carriers';
+import {
+  boCarriersPage,
+  boDashboardPage,
+  boLoginPage,
+  boShippingPreferencesPage,
+  type BrowserContext,
+  dataCarriers,
+  dataCustomers,
+  foClassicCartPage,
+  foClassicCheckoutPage,
+  foClassicHomePage,
+  foClassicProductPage,
+  type Page,
+  utilsCore,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_shipping_carriers_changePosition';
 
@@ -29,24 +24,23 @@ describe('BO - Shipping - Carriers : Change carrier position', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
-  // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Change carrier position', async () => {
     it('should open the shop page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'openTheShopPage', baseContext);
 
-      await homePage.goToFo(page);
-      await homePage.changeLanguage(page, 'en');
+      await foClassicHomePage.goToFo(page);
+      await foClassicHomePage.changeLanguage(page, 'en');
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Fail to open FO home page').to.eq(true);
     });
 
@@ -54,22 +48,22 @@ describe('BO - Shipping - Carriers : Change carrier position', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'addFirstProductToCart', baseContext);
 
       // Go to the first product page
-      await homePage.goToProductPage(page, 1);
+      await foClassicHomePage.goToProductPage(page, 1);
       // Add the product to the cart
-      await productPage.addProductToTheCart(page);
+      await foClassicProductPage.addProductToTheCart(page);
       // Proceed to checkout the shopping cart
-      await cartPage.clickOnProceedToCheckout(page);
+      await foClassicCartPage.clickOnProceedToCheckout(page);
 
-      const isCheckoutPage = await checkoutPage.isCheckoutPage(page);
+      const isCheckoutPage = await foClassicCheckoutPage.isCheckoutPage(page);
       expect(isCheckoutPage).to.equal(true);
     });
 
     it('should login and go to address step', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'loginToFO', baseContext);
 
-      await checkoutPage.clickOnSignIn(page);
+      await foClassicCheckoutPage.clickOnSignIn(page);
 
-      const isStepLoginComplete = await checkoutPage.customerLogin(page, dataCustomers.johnDoe);
+      const isStepLoginComplete = await foClassicCheckoutPage.customerLogin(page, dataCustomers.johnDoe);
       expect(isStepLoginComplete, 'Step Personal information is not complete').to.equal(true);
     });
 
@@ -77,87 +71,111 @@ describe('BO - Shipping - Carriers : Change carrier position', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'goToDeliveryStep', baseContext);
 
       // Address step - Go to delivery step
-      const isStepAddressComplete = await checkoutPage.goToDeliveryStep(page);
+      const isStepAddressComplete = await foClassicCheckoutPage.goToDeliveryStep(page);
       expect(isStepAddressComplete, 'Step Address is not complete').to.eq(true);
     });
 
     it('should check the carriers position', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkCarriersPosition', baseContext);
 
-      const carriers = await checkoutPage.getAllCarriersNames(page);
-      expect(carriers).to.deep.equal([Carriers.default.name, Carriers.myCarrier.name]);
+      const carriers = await foClassicCheckoutPage.getAllCarriersNames(page);
+      expect(carriers).to.deep.equal([dataCarriers.clickAndCollect.name, dataCarriers.myCarrier.name]);
     });
 
     it('should open the back office in new tab', async function () {
-      await testContext.addContextItem(this, 'testIdentifier', 'resetCarriersFilters', baseContext);
+      await testContext.addContextItem(this, 'testIdentifier', 'goToBO', baseContext);
 
-      page = await helper.newTab(browserContext);
-      await checkoutPage.goToBO(page);
+      page = await utilsPlaywright.newTab(browserContext);
 
-      await loginCommon.loginBO(this, page);
+      await boLoginPage.goTo(page, global.BO.URL);
 
-      const pageTitle = await dashboardPage.getPageTitle(page);
-      expect(pageTitle).to.contains(dashboardPage.pageTitle);
+      const pageTitle = await boLoginPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boLoginPage.pageTitle);
+    });
+
+    it('should connect to the backoffice', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'connectBO', baseContext);
+
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Shipping > Preferences\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToPreferencesPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.shippingLink,
-        dashboardPage.shippingPreferencesLink,
+        boDashboardPage.shippingLink,
+        boDashboardPage.shippingPreferencesLink,
       );
-      await preferencesPage.closeSfToolBar(page);
+      await boShippingPreferencesPage.closeSfToolBar(page);
 
-      const pageTitle = await preferencesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(preferencesPage.pageTitle);
+      const pageTitle = await boShippingPreferencesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boShippingPreferencesPage.pageTitle);
     });
 
     it('should set sort by \'Position\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setSortByPosition', baseContext);
 
-      const textResult = await preferencesPage.setCarrierSortOrderBy(page, 'Position', 'Ascending');
-      expect(textResult).to.contain(preferencesPage.successfulUpdateMessage);
+      const textResult = await boShippingPreferencesPage.setCarrierSortOrderBy(page, 'Position', 'Ascending');
+      expect(textResult).to.contain(boShippingPreferencesPage.successfulUpdateMessage);
     });
 
     it('should go to \'Shipping > Carriers\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCarriersPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.shippingLink,
-        dashboardPage.carriersLink,
+        boDashboardPage.shippingLink,
+        boDashboardPage.carriersLink,
       );
 
-      const pageTitle = await carriersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(carriersPage.pageTitle);
+      const pageTitle = await boCarriersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCarriersPage.pageTitle);
+    });
+
+    it('should sort by \'position\' \'asc\' and check result', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'sortByPosition', baseContext);
+
+      const nonSortedTable = await boCarriersPage.getAllRowsColumnContent(page, 'a!position');
+
+      await boCarriersPage.sortTable(page, 'a!position', 'asc');
+
+      const sortedTable = await boCarriersPage.getAllRowsColumnContent(page, 'a!position');
+
+      const nonSortedTableFloat = nonSortedTable.map((text: string): number => parseFloat(text));
+      const sortedTableFloat = sortedTable.map((text: string): number => parseFloat(text));
+
+      const expectedResult = await utilsCore.sortArrayNumber(nonSortedTableFloat);
+      expect(sortedTableFloat).to.deep.equal(expectedResult);
     });
 
     it('should change first carrier position to 2', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'changeCarrierPosition', baseContext);
 
       // Get first row carrier name
-      const firstRowCarrierName = await carriersPage.getTextColumn(page, 1, 'name');
+      const firstRowCarrierName = await boCarriersPage.getTextColumn(page, 1, 'name');
 
       // Change position and check successful message
-      const textResult = await carriersPage.changePosition(page, 1, 2);
-      expect(textResult, 'Unable to change position').to.contains(carriersPage.successfulUpdateMessage);
+      const textResult = await boCarriersPage.changePosition(page, 1, 2);
+      expect(textResult, 'Unable to change position').to.contains(boCarriersPage.successfulUpdateMessage);
 
       // Get second row carrier name and check if is equal the first row carrier name before changing position
-      const secondRowCarrierName = await carriersPage.getTextColumn(page, 2, 'name');
+      const secondRowCarrierName = await boCarriersPage.getTextColumn(page, 2, 'name');
       expect(secondRowCarrierName, 'Changing position was done wrongly').to.equal(firstRowCarrierName);
     });
 
     it('should go back to FO > Checkout page and check the carriers position', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToFO', baseContext);
 
-      page = await carriersPage.changePage(browserContext, 0);
+      page = await boCarriersPage.changePage(browserContext, 0);
 
-      await checkoutPage.reloadPage(page);
+      await foClassicCheckoutPage.reloadPage(page);
 
-      const carriers = await checkoutPage.getAllCarriersNames(page);
-      expect(carriers).to.deep.equal([Carriers.myCarrier.name, Carriers.default.name]);
+      const carriers = await foClassicCheckoutPage.getAllCarriersNames(page);
+      expect(carriers).to.deep.equal([dataCarriers.myCarrier.name, dataCarriers.clickAndCollect.name]);
     });
   });
 
@@ -165,46 +183,46 @@ describe('BO - Shipping - Carriers : Change carrier position', async () => {
     it('should go back to BO > Shipping page and reset the carriers position', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBO', baseContext);
 
-      page = await checkoutPage.changePage(browserContext, 1);
+      page = await foClassicCheckoutPage.changePage(browserContext, 1);
 
-      const pageTitle = await carriersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(carriersPage.pageTitle);
+      const pageTitle = await boCarriersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCarriersPage.pageTitle);
     });
 
     it('should reset second carrier position to 1', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetCarrierPosition', baseContext);
 
       // Get second row carrier name
-      const secondRowCarrierName = await carriersPage.getTextColumn(page, 2, 'name');
+      const secondRowCarrierName = await boCarriersPage.getTextColumn(page, 2, 'name');
 
       // Change position and check successful message
-      const textResult = await carriersPage.changePosition(page, 2, 1);
-      expect(textResult, 'Unable to change position').to.contains(carriersPage.successfulUpdateMessage);
+      const textResult = await boCarriersPage.changePosition(page, 2, 1);
+      expect(textResult, 'Unable to change position').to.contains(boCarriersPage.successfulUpdateMessage);
 
       // Get first row carrier name and check if is equal the first row carrier name before changing position
-      const firstRowCarrierName = await carriersPage.getTextColumn(page, 1, 'name');
+      const firstRowCarrierName = await boCarriersPage.getTextColumn(page, 1, 'name');
       expect(firstRowCarrierName, 'Changing position was done wrongly').to.equal(secondRowCarrierName);
     });
 
     it('should go to \'Shipping > Preferences\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToPreferencesPage2', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.shippingLink,
-        dashboardPage.shippingPreferencesLink,
+        boDashboardPage.shippingLink,
+        boDashboardPage.shippingPreferencesLink,
       );
-      await preferencesPage.closeSfToolBar(page);
+      await boShippingPreferencesPage.closeSfToolBar(page);
 
-      const pageTitle = await preferencesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(preferencesPage.pageTitle);
+      const pageTitle = await boShippingPreferencesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boShippingPreferencesPage.pageTitle);
     });
 
     it('should set sort by \'Price\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setSortByPrice', baseContext);
 
-      const textResult = await preferencesPage.setCarrierSortOrderBy(page, 'Price', 'Ascending');
-      expect(textResult).to.contain(preferencesPage.successfulUpdateMessage);
+      const textResult = await boShippingPreferencesPage.setCarrierSortOrderBy(page, 'Price', 'Ascending');
+      expect(textResult).to.contain(boShippingPreferencesPage.successfulUpdateMessage);
     });
   });
 });

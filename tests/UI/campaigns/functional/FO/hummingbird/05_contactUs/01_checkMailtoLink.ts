@@ -1,19 +1,18 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
 
 // Import common tests
-import {installHummingbird, uninstallHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import FO pages
-import contactUsPage from '@pages/FO/hummingbird/contactUs';
-import homePage from '@pages/FO/hummingbird/home';
-
-// Import data
-import Employees from '@data/demo/employees';
+import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+import {
+  type BrowserContext,
+  dataEmployees,
+  foHummingbirdContactUsPage,
+  foHummingbirdHomePage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_hummingbird_contactUs_checkMailtoLink';
 
@@ -32,45 +31,45 @@ describe('FO - Contact us : Check mail link on contact us page', async () => {
   let page: Page;
 
   // Pre-condition : Install Hummingbird
-  installHummingbird(`${baseContext}_preTest`);
+  enableHummingbird(`${baseContext}_preTest`);
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Check mail link on contact us page', async () => {
     it('should go to FO home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFO', baseContext);
 
-      await homePage.goToFo(page);
+      await foHummingbirdHomePage.goToFo(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage).to.eq(true);
     });
 
     it('should go to \'Contact us\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToContactUsPage', baseContext);
 
-      await homePage.clickOnHeaderLink(page, 'Contact us');
+      await foHummingbirdHomePage.clickOnHeaderLink(page, 'Contact us');
 
-      const pageTitle = await contactUsPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open FO login page').to.contains(contactUsPage.pageTitle);
+      const pageTitle = await foHummingbirdContactUsPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open FO login page').to.contains(foHummingbirdContactUsPage.pageTitle);
     });
 
     it('should check email us link', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkEmailUsLink', baseContext);
 
-      const emailUsLinkHref = await contactUsPage.getEmailUsLink(page);
-      expect(emailUsLinkHref).to.equal(`mailto:${Employees.DefaultEmployee.email}`);
+      const emailUsLinkHref = await foHummingbirdContactUsPage.getEmailUsLink(page);
+      expect(emailUsLinkHref).to.equal(`mailto:${dataEmployees.defaultEmployee.email}`);
     });
   });
 
   // Post-condition : Uninstall Hummingbird
-  uninstallHummingbird(`${baseContext}_postTest`);
+  disableHummingbird(`${baseContext}_postTest`);
 });

@@ -23,9 +23,9 @@
  * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
  */
 
-import {Grid} from '@js/types/grid';
+import {Grid} from '@PSTypes/grid';
 import GridMap from '@components/grid/grid-map';
-import {isUndefined} from '@PSTypes/typeguard';
+import {isUndefined} from '@components/typeguard';
 import 'tablednd/dist/jquery.tablednd.min';
 
 const {$} = window;
@@ -293,10 +293,12 @@ export default class PositionExtension {
    */
   private setReorderButtonLabel(): void {
     const rearrangeButton = this.getReorderButton();
-    const label = this.isPositionsReorderActive()
-      ? rearrangeButton.data('label-save')
-      : rearrangeButton.data('label-reorder');
-    rearrangeButton.html(label);
+
+    if (this.isPositionsReorderActive()) {
+      rearrangeButton.hide();
+    } else {
+      rearrangeButton.data('label-reorder');
+    }
   }
 
   /**

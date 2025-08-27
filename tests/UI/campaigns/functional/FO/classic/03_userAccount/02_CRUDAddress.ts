@@ -1,33 +1,26 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import commonTests
 import deleteCacheTest from '@commonTests/BO/advancedParameters/cache';
 import {deleteCustomerTest} from '@commonTests/BO/customers/customer';
 import {createAccountTest} from '@commonTests/FO/classic/account';
 
-// Import FO pages
-import {cartPage} from '@pages/FO/classic/cart';
-import {checkoutPage} from '@pages/FO/classic/checkout';
-import {homePage} from '@pages/FO/classic/home';
-import {loginPage} from '@pages/FO/classic/login';
-import {myAccountPage} from '@pages/FO/classic/myAccount';
-import {addAddressPage} from '@pages/FO/classic/myAccount/addAddress';
-import {addressesPage} from '@pages/FO/classic/myAccount/addresses';
-import {productPage} from '@pages/FO/classic/product';
-
-// Import data
-import Products from '@data/demo/products';
-
 import {
-  // Import data
+  type BrowserContext,
+  dataProducts,
   FakerAddress,
   FakerCustomer,
+  foClassicCartPage,
+  foClassicCheckoutPage,
+  foClassicHomePage,
+  foClassicLoginPage,
+  foClassicMyAccountPage,
+  foClassicMyAddressesPage,
+  foClassicMyAddressesCreatePage,
+  foClassicProductPage,
+  type Page,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_FO_classic_userAccount_CRUDAddress';
 
@@ -65,65 +58,65 @@ describe('FO - Account : CRUD address', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Go to \'Add first address\' page and create address', async () => {
     it('should go to FO home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFoHomePage', baseContext);
 
-      await homePage.goToFo(page);
+      await foClassicHomePage.goToFo(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage).to.eq(true);
     });
 
     it('should go to login page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToLoginFoPage', baseContext);
 
-      await homePage.goToLoginPage(page);
+      await foClassicHomePage.goToLoginPage(page);
 
-      const pageHeaderTitle = await loginPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(loginPage.pageTitle);
+      const pageHeaderTitle = await foClassicLoginPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicLoginPage.pageTitle);
     });
 
     it('Should sign in FO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'signInFo', baseContext);
 
-      await loginPage.customerLogin(page, newCustomerData);
+      await foClassicLoginPage.customerLogin(page, newCustomerData);
 
-      const isCustomerConnected = await myAccountPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicMyAccountPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is not connected').to.eq(true);
     });
 
     it('should go to \'My Account\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToMyAccountPage', baseContext);
 
-      await homePage.goToMyAccountPage(page);
+      await foClassicHomePage.goToMyAccountPage(page);
 
-      const pageHeaderTitle = await myAccountPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(myAccountPage.pageTitle);
+      const pageHeaderTitle = await foClassicMyAccountPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAccountPage.pageTitle);
     });
 
     it('should go to \'Add first address\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAddFirstAddressPage', baseContext);
 
-      await myAccountPage.goToAddressesPage(page);
+      await foClassicMyAccountPage.goToAddressesPage(page);
 
-      const pageHeaderTitle = await addressesPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(addressesPage.addressPageTitle);
+      const pageHeaderTitle = await foClassicMyAddressesPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAddressesPage.addressPageTitle);
     });
 
     it('should create new address', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createAddress', baseContext);
 
-      const textResult = await addAddressPage.setAddress(page, createAddressData);
-      expect(textResult).to.equal(addressesPage.addAddressSuccessfulMessage);
+      const textResult = await foClassicMyAddressesCreatePage.setAddress(page, createAddressData);
+      expect(textResult).to.equal(foClassicMyAddressesPage.addAddressSuccessfulMessage);
     });
   });
 
@@ -131,33 +124,33 @@ describe('FO - Account : CRUD address', async () => {
     it('should go to edit address page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToEditAddressPage', baseContext);
 
-      const addressPosition = await addressesPage.getAddressPosition(page, createAddressData.alias);
-      await addressesPage.goToEditAddressPage(page, addressPosition);
+      const addressPosition = await foClassicMyAddressesPage.getAddressPosition(page, createAddressData.alias);
+      await foClassicMyAddressesPage.goToEditAddressPage(page, addressPosition);
 
-      const pageHeaderTitle = await addAddressPage.getHeaderTitle(page);
-      expect(pageHeaderTitle).to.equal(addAddressPage.updateFormTitle);
+      const pageHeaderTitle = await foClassicMyAddressesCreatePage.getHeaderTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAddressesCreatePage.updateFormTitle);
     });
 
     it('should update the address', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateAddress', baseContext);
 
-      const textResult = await addAddressPage.setAddress(page, editAddressData);
-      expect(textResult).to.equal(addressesPage.updateAddressSuccessfulMessage);
+      const textResult = await foClassicMyAddressesCreatePage.setAddress(page, editAddressData);
+      expect(textResult).to.equal(foClassicMyAddressesPage.updateAddressSuccessfulMessage);
     });
 
     it('should go back to \'Your account page\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackYourAccountPage', baseContext);
 
-      await addAddressPage.clickOnBreadCrumbLink(page, 'my-account');
+      await foClassicMyAddressesCreatePage.clickOnBreadCrumbLink(page, 'my-account');
 
-      const pageHeaderTitle = await myAccountPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(myAccountPage.pageTitle);
+      const pageHeaderTitle = await foClassicMyAccountPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAccountPage.pageTitle);
     });
 
     it('should check that \'Add first address\' is changed to \'Addresses\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkAddFirstAddress', baseContext);
 
-      const isAddFirstAddressLinkVisible = await myAccountPage.isAddFirstAddressLinkVisible(page);
+      const isAddFirstAddressLinkVisible = await foClassicMyAccountPage.isAddFirstAddressLinkVisible(page);
       expect(isAddFirstAddressLinkVisible, 'Add first address link is still visible!').to.eq(false);
     });
   });
@@ -166,26 +159,26 @@ describe('FO - Account : CRUD address', async () => {
     it('should go to \'Addresses\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAddressesPage', baseContext);
 
-      await myAccountPage.goToAddressesPage(page);
+      await foClassicMyAccountPage.goToAddressesPage(page);
 
-      const pageHeaderTitle = await addressesPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(addressesPage.pageTitle);
+      const pageHeaderTitle = await foClassicMyAddressesPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAddressesPage.pageTitle);
     });
 
     it('should go to \'Create new address\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToNewAddressPage', baseContext);
 
-      await addressesPage.openNewAddressForm(page);
+      await foClassicMyAddressesPage.openNewAddressForm(page);
 
-      const pageHeaderTitle = await addAddressPage.getHeaderTitle(page);
-      expect(pageHeaderTitle).to.equal(addAddressPage.creationFormTitle);
+      const pageHeaderTitle = await foClassicMyAddressesCreatePage.getHeaderTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAddressesCreatePage.creationFormTitle);
     });
 
     it('should create new address', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createAddress2', baseContext);
 
-      const textResult = await addAddressPage.setAddress(page, secondAddressData);
-      expect(textResult).to.equal(addressesPage.addAddressSuccessfulMessage);
+      const textResult = await foClassicMyAddressesCreatePage.setAddress(page, secondAddressData);
+      expect(textResult).to.equal(foClassicMyAddressesPage.addAddressSuccessfulMessage);
     });
   });
 
@@ -193,27 +186,27 @@ describe('FO - Account : CRUD address', async () => {
     it('should go to home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToHomePage', baseContext);
 
-      await homePage.goToHomePage(page);
+      await foClassicHomePage.goToHomePage(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Home page is not displayed').to.eq(true);
     });
 
     it('should go to product page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToProductPage', baseContext);
 
-      await homePage.goToProductPage(page, 1);
+      await foClassicHomePage.goToProductPage(page, 1);
 
-      const pageTitle = await productPage.getPageTitle(page);
-      expect(pageTitle).to.contains(Products.demo_1.name);
+      const pageTitle = await foClassicProductPage.getPageTitle(page);
+      expect(pageTitle).to.contains(dataProducts.demo_1.name);
     });
 
     it('should add product to the cart', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addProductToCart', baseContext);
 
-      await productPage.addProductToTheCart(page);
+      await foClassicProductPage.addProductToTheCart(page);
 
-      const notificationsNumber = await cartPage.getCartNotificationsNumber(page);
+      const notificationsNumber = await foClassicCartPage.getCartNotificationsNumber(page);
       expect(notificationsNumber).to.be.equal(1);
     });
 
@@ -221,9 +214,9 @@ describe('FO - Account : CRUD address', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'checkCreatedAddresses1', baseContext);
 
       // Proceed to checkout the shopping cart
-      await cartPage.clickOnProceedToCheckout(page);
+      await foClassicCartPage.clickOnProceedToCheckout(page);
 
-      const addressesNumber = await checkoutPage.getNumberOfAddresses(page);
+      const addressesNumber = await foClassicCheckoutPage.getNumberOfAddresses(page);
       expect(addressesNumber, 'The addresses number is not equal to 2!').to.equal(2);
     });
   });
@@ -232,96 +225,96 @@ describe('FO - Account : CRUD address', async () => {
     it('should go to home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToHomePageToDeleteAddress', baseContext);
 
-      await homePage.goToHomePage(page);
+      await foClassicHomePage.goToHomePage(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Home page is not displayed').to.eq(true);
     });
 
     it('should go to \'My Account\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToMyAccountPageToDeleteAddress', baseContext);
 
-      await homePage.goToMyAccountPage(page);
+      await foClassicHomePage.goToMyAccountPage(page);
 
-      const pageHeaderTitle = await myAccountPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(myAccountPage.pageTitle);
+      const pageHeaderTitle = await foClassicMyAccountPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAccountPage.pageTitle);
     });
 
     it('should go to addresses page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAddressesPageToDeleteAddress', baseContext);
 
-      await myAccountPage.goToAddressesPage(page);
+      await foClassicMyAccountPage.goToAddressesPage(page);
 
-      const pageHeaderTitle = await addressesPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(addressesPage.pageTitle);
+      const pageHeaderTitle = await foClassicMyAddressesPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAddressesPage.pageTitle);
     });
 
     it('should try to delete the first address and check the error message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteAddress', baseContext);
 
-      firstAddressPosition = await addressesPage.getAddressPosition(page, editAddressData.alias);
-      secondAddressPosition = await addressesPage.getAddressPosition(page, secondAddressData.alias);
+      firstAddressPosition = await foClassicMyAddressesPage.getAddressPosition(page, editAddressData.alias);
+      secondAddressPosition = await foClassicMyAddressesPage.getAddressPosition(page, secondAddressData.alias);
 
-      const textResult = await addressesPage.deleteAddress(page, firstAddressPosition);
-      expect(textResult).to.equal(addressesPage.deleteAddressErrorMessage);
+      const textResult = await foClassicMyAddressesPage.deleteAddress(page, firstAddressPosition);
+      expect(textResult).to.equal(foClassicMyAddressesPage.deleteAddressErrorMessage);
     });
 
     it('should go to cart page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToShoppingCartPage', baseContext);
 
-      await addressesPage.goToCartPage(page);
+      await foClassicMyAddressesPage.goToCartPage(page);
 
-      const pageTitle = await cartPage.getPageTitle(page);
-      expect(pageTitle).to.equal(cartPage.pageTitle);
+      const pageTitle = await foClassicCartPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foClassicCartPage.pageTitle);
     });
 
     it('should select the second address and continue', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'selectSecondAddress', baseContext);
 
       // Proceed to checkout the shopping cart
-      await cartPage.clickOnProceedToCheckout(page);
+      await foClassicCartPage.clickOnProceedToCheckout(page);
 
-      await checkoutPage.chooseDeliveryAddress(page, secondAddressPosition);
+      await foClassicCheckoutPage.chooseDeliveryAddress(page, secondAddressPosition);
 
       // Address step - Go to delivery step
-      const isStepAddressComplete = await checkoutPage.goToDeliveryStep(page);
+      const isStepAddressComplete = await foClassicCheckoutPage.goToDeliveryStep(page);
       expect(isStepAddressComplete, 'Step Address is not complete').to.eq(true);
     });
 
     it('should go to home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToHomePageToDeleteAddress2', baseContext);
 
-      await homePage.goToHomePage(page);
+      await foClassicHomePage.goToHomePage(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Home page is not displayed').to.eq(true);
     });
 
     it('should go to \'My Account\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToMyAccountPageToDeleteAddress2', baseContext);
 
-      await homePage.goToMyAccountPage(page);
+      await foClassicHomePage.goToMyAccountPage(page);
 
-      const pageHeaderTitle = await myAccountPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(myAccountPage.pageTitle);
+      const pageHeaderTitle = await foClassicMyAccountPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAccountPage.pageTitle);
     });
 
     it('should go to addresses page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAddressesPageToDeleteAddress2', baseContext);
 
-      await myAccountPage.goToAddressesPage(page);
+      await foClassicMyAccountPage.goToAddressesPage(page);
 
-      const pageHeaderTitle = await addressesPage.getPageTitle(page);
-      expect(pageHeaderTitle).to.equal(addressesPage.pageTitle);
+      const pageHeaderTitle = await foClassicMyAddressesPage.getPageTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicMyAddressesPage.pageTitle);
     });
 
     it('should delete the first address and check the success message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteAddress2', baseContext);
 
-      const addressPosition = await addressesPage.getAddressPosition(page, editAddressData.alias);
+      const addressPosition = await foClassicMyAddressesPage.getAddressPosition(page, editAddressData.alias);
 
-      const textResult = await addressesPage.deleteAddress(page, addressPosition);
-      expect(textResult).to.equal(addressesPage.deleteAddressSuccessfulMessage);
+      const textResult = await foClassicMyAddressesPage.deleteAddress(page, addressPosition);
+      expect(textResult).to.equal(foClassicMyAddressesPage.deleteAddressSuccessfulMessage);
     });
   });
 

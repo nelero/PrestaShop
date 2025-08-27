@@ -1,19 +1,18 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import common tests
-import {installHummingbird, uninstallHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import FO pages
-import cartPage from '@pages/FO/hummingbird/cart';
-import homePage from '@pages/FO/hummingbird/home';
-import productPage from '@pages/FO/hummingbird/product';
-import quickViewModal from '@pages/FO/hummingbird/modal/quickView';
-import blockCartModal from '@pages/FO/hummingbird/modal/blockCart';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
+
+import {
+  type BrowserContext,
+  foHummingbirdCartPage,
+  foHummingbirdHomePage,
+  foHummingbirdModalBlockCartPage,
+  foHummingbirdModalQuickViewPage,
+  foHummingbirdProductPage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_hummingbird_cart_modal_continueShopping';
 
@@ -22,110 +21,110 @@ describe('FO - cart : Continue shopping / Proceed to checkout / Close', async ()
   let page: Page;
 
   // Pre-condition : Install Hummingbird
-  installHummingbird(`${baseContext}_preTest`);
+  enableHummingbird(`${baseContext}_preTest`);
 
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Continue shopping / Proceed to checkout / Close modal', async () => {
     it('should open the shop page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFo', baseContext);
 
-      await homePage.goToFo(page);
-      await homePage.changeLanguage(page, 'en');
+      await foHummingbirdHomePage.goToFo(page);
+      await foHummingbirdHomePage.changeLanguage(page, 'en');
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage, 'Fail to open FO home page').to.eq(true);
     });
 
     it('should add the first product to cart by quick view', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addFirstProductToCart', baseContext);
 
-      await homePage.quickViewProduct(page, 1);
-      await quickViewModal.setQuantityAndAddToCart(page, 2);
+      await foHummingbirdHomePage.quickViewProduct(page, 1);
+      await foHummingbirdModalQuickViewPage.setQuantityAndAddToCart(page, 2);
 
-      const isBlockCartModal = await blockCartModal.isBlockCartModalVisible(page);
+      const isBlockCartModal = await foHummingbirdModalBlockCartPage.isBlockCartModalVisible(page);
       expect(isBlockCartModal).to.equal(true);
 
-      const successMessage = await blockCartModal.getBlockCartModalTitle(page);
-      expect(successMessage).to.contains(homePage.successAddToCartMessage);
+      const successMessage = await foHummingbirdModalBlockCartPage.getBlockCartModalTitle(page);
+      expect(successMessage).to.contains(foHummingbirdHomePage.successAddToCartMessage);
     });
 
     it('should click on continue shopping button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'continueShopping', baseContext);
 
-      const isModalNotVisible = await blockCartModal.continueShopping(page);
+      const isModalNotVisible = await foHummingbirdModalBlockCartPage.continueShopping(page);
       expect(isModalNotVisible).to.equal(true);
     });
 
     it('should go to the second product page and add the product to the cart', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToSecondProductPage', baseContext);
 
-      await homePage.goToProductPage(page, 2);
-      await productPage.clickOnAddToCartButton(page);
+      await foHummingbirdHomePage.goToProductPage(page, 2);
+      await foHummingbirdProductPage.clickOnAddToCartButton(page);
 
-      const successMessage = await blockCartModal.getBlockCartModalTitle(page);
-      expect(successMessage).to.contains(homePage.successAddToCartMessage);
+      const successMessage = await foHummingbirdModalBlockCartPage.getBlockCartModalTitle(page);
+      expect(successMessage).to.contains(foHummingbirdHomePage.successAddToCartMessage);
     });
 
     it('should close the blockCart modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'closeBlockCartModal', baseContext);
 
-      const isQuickViewModalClosed = await blockCartModal.closeBlockCartModal(page);
+      const isQuickViewModalClosed = await foHummingbirdModalBlockCartPage.closeBlockCartModal(page);
       expect(isQuickViewModalClosed).to.equal(true);
     });
 
     it('should click on add product to cart button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addProductToCart', baseContext);
 
-      await productPage.clickOnAddToCartButton(page);
+      await foHummingbirdProductPage.clickOnAddToCartButton(page);
 
-      const successMessage = await blockCartModal.getBlockCartModalTitle(page);
-      expect(successMessage).to.contains(homePage.successAddToCartMessage);
+      const successMessage = await foHummingbirdModalBlockCartPage.getBlockCartModalTitle(page);
+      expect(successMessage).to.contains(foHummingbirdHomePage.successAddToCartMessage);
     });
 
     it('should close the blockCart modal by clicking outside the modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'closeBlockCartModal2', baseContext);
 
-      const isQuickViewModalClosed = await blockCartModal.closeBlockCartModal(page, true);
+      const isQuickViewModalClosed = await foHummingbirdModalBlockCartPage.closeBlockCartModal(page, true);
       expect(isQuickViewModalClosed).to.equal(true);
     });
 
     it('should click on add product to cart button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addProductToCart2', baseContext);
 
-      await productPage.clickOnAddToCartButton(page);
+      await foHummingbirdProductPage.clickOnAddToCartButton(page);
 
-      const successMessage = await blockCartModal.getBlockCartModalTitle(page);
-      expect(successMessage).to.contains(homePage.successAddToCartMessage);
+      const successMessage = await foHummingbirdModalBlockCartPage.getBlockCartModalTitle(page);
+      expect(successMessage).to.contains(foHummingbirdHomePage.successAddToCartMessage);
     });
 
     it('should click on proceed to checkout button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'proceedToCheckout', baseContext);
 
-      await blockCartModal.proceedToCheckout(page);
+      await foHummingbirdModalBlockCartPage.proceedToCheckout(page);
 
-      const notificationsNumber = await cartPage.getCartNotificationsNumber(page);
+      const notificationsNumber = await foHummingbirdCartPage.getCartNotificationsNumber(page);
       expect(notificationsNumber).to.equal(5);
     });
 
     it('should delete the shopping cart', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteProducts', baseContext);
 
-      await cartPage.deleteProduct(page, 2);
-      await cartPage.deleteProduct(page, 1);
+      await foHummingbirdCartPage.deleteProduct(page, 2);
+      await foHummingbirdCartPage.deleteProduct(page, 1);
 
-      const notificationNumber = await cartPage.getCartNotificationsNumber(page);
+      const notificationNumber = await foHummingbirdCartPage.getCartNotificationsNumber(page);
       expect(notificationNumber).to.be.equal(0);
     });
   });
 
   // Post-condition : Uninstall Hummingbird
-  uninstallHummingbird(`${baseContext}_postTest`);
+  disableHummingbird(`${baseContext}_postTest`);
 });

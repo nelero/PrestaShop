@@ -1,39 +1,32 @@
-// Import utils
-import date from '@utils/date';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
 // Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
 import {createOrderByCustomerTest} from '@commonTests/FO/classic/order';
 
-// Import pages
-// Import BO pages
-import orderMessagesPage from '@pages/BO/customerService/orderMessages';
-import dashboardPage from '@pages/BO/dashboard';
-import ordersPage from '@pages/BO/orders';
-import orderPageMessagesBlock from '@pages/BO/orders/view/messagesBlock';
-// Import FO pages
-import {orderConfirmationPage as foOrderConfirmationPage} from '@pages/FO/classic/checkout/orderConfirmation';
-import {homePage as foHomePage} from '@pages/FO/classic/home';
-import {loginPage as foLoginPage} from '@pages/FO/classic/login';
-import {myAccountPage} from '@pages/FO/classic/myAccount';
-import {orderHistoryPage} from '@pages/FO/classic/myAccount/orderHistory';
-
-// Import data
-import Employees from '@data/demo/employees';
-import Products from '@data/demo/products';
-import OrderData from '@data/faker/order';
-import type {OrderHistoryMessage, OrderMessage} from '@data/types/order';
-
 import {
-  // Import data
+  boDashboardPage,
+  boLoginPage,
+  boOrdersPage,
+  boOrdersViewBlockMessagesPage,
+  boOrderMessagesPage,
+  type BrowserContext,
   dataCustomers,
+  dataEmployees,
   dataPaymentMethods,
+  dataProducts,
+  FakerOrder,
+  foClassicCheckoutOrderConfirmationPage,
+  foClassicHomePage,
+  foClassicLoginPage,
+  foClassicMyAccountPage,
+  foClassicMyOrderHistoryPage,
+  type OrderHistoryMessage,
+  type OrderMessage,
+  type Page,
+  utilsDate,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_orders_orders_viewAndEditOrder_messagesBlock';
 
@@ -43,7 +36,7 @@ Pre-condition :
 Scenario :
 - Go to view order page
 - Send message and check message block( messages number, employee icon, date, sender)
-- Check message in FO -> Issue https://github.com/PrestaShop/PrestaShop/issues/26532
+- Check message in FO
 - Uncheck display to customer and send message then check( messages number, message text, employee icon, date, sender)
 - Check that the message is not visible in FO
 - Send message from FO and check it on BO ( messages number, Message text, employee icon, date, sender)
@@ -55,15 +48,15 @@ describe('BO - Orders - View and edit order : Check messages block', async () =>
   let page: Page;
   let textMessage: string = '';
 
-  const today: string = date.getDateFormat('mm/dd/yyyy');
+  const today: string = utilsDate.getDateFormat('mm/dd/yyyy');
   const messageData: OrderMessage = {orderMessage: 'Delay', displayToCustomer: true, message: ''};
   const secondMessageData: OrderMessage = {orderMessage: 'Delay', displayToCustomer: false, message: 'test message visibility'};
   // New order by customer data
-  const orderByCustomerData: OrderData = new OrderData({
+  const orderByCustomerData: FakerOrder = new FakerOrder({
     customer: dataCustomers.johnDoe,
     products: [
       {
-        product: Products.demo_1,
+        product: dataProducts.demo_1,
         quantity: 1,
       },
     ],
@@ -76,57 +69,63 @@ describe('BO - Orders - View and edit order : Check messages block', async () =>
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   // 1 - Go to view order page
   describe('Go to view order page', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Orders > Orders\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrdersPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.ordersParentLink,
-        dashboardPage.ordersLink,
+        boDashboardPage.ordersParentLink,
+        boDashboardPage.ordersLink,
       );
-      await ordersPage.closeSfToolBar(page);
+      await boOrdersPage.closeSfToolBar(page);
 
-      const pageTitle = await ordersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(ordersPage.pageTitle);
+      const pageTitle = await boOrdersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boOrdersPage.pageTitle);
     });
 
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetOrderTableFilters1', baseContext);
 
-      const numberOfOrders = await ordersPage.resetAndGetNumberOfLines(page);
+      const numberOfOrders = await boOrdersPage.resetAndGetNumberOfLines(page);
       expect(numberOfOrders).to.be.above(0);
     });
 
     it(`should filter the Orders table by 'Customer: ${dataCustomers.johnDoe.lastName}'`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterByCustomer1', baseContext);
 
-      await ordersPage.filterOrders(page, 'input', 'customer', dataCustomers.johnDoe.lastName);
+      await boOrdersPage.filterOrders(page, 'input', 'customer', dataCustomers.johnDoe.lastName);
 
-      const textColumn = await ordersPage.getTextColumn(page, 'customer', 1);
+      const textColumn = await boOrdersPage.getTextColumn(page, 'customer', 1);
       expect(textColumn).to.contains(dataCustomers.johnDoe.lastName);
     });
 
     it('should view the order', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'orderPageMessagesBlock1', baseContext);
 
-      await ordersPage.goToOrder(page, 1);
+      await boOrdersPage.goToOrder(page, 1);
 
-      const pageTitle = await orderPageMessagesBlock.getPageTitle(page);
-      expect(pageTitle).to.contains(orderPageMessagesBlock.pageTitle);
+      const pageTitle = await boOrdersViewBlockMessagesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boOrdersViewBlockMessagesPage.pageTitle);
     });
   });
 
@@ -135,35 +134,35 @@ describe('BO - Orders - View and edit order : Check messages block', async () =>
     it('should send message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'sendMessage', baseContext);
 
-      const textMessage = await orderPageMessagesBlock.sendMessage(page, messageData);
-      expect(textMessage).to.equal(orderPageMessagesBlock.commentSuccessfullMessage);
+      const textMessage = await boOrdersViewBlockMessagesPage.sendMessage(page, messageData);
+      expect(textMessage).to.equal(boOrdersViewBlockMessagesPage.commentSuccessfullMessage);
     });
 
     it('should check that the messages number is equal to 1', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMessageNumber1', baseContext);
 
-      const messagesNumber = await orderPageMessagesBlock.getMessagesNumber(page);
+      const messagesNumber = await boOrdersViewBlockMessagesPage.getMessagesNumber(page);
       expect(messagesNumber).to.be.equal(1);
     });
 
     it('should check that the message is visible and get it', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMessage1', baseContext);
 
-      const isVisible = await orderPageMessagesBlock.isMessageVisible(page);
+      const isVisible = await boOrdersViewBlockMessagesPage.isMessageVisible(page);
       expect(isVisible).to.eq(true);
     });
 
     it('should check the message sender and the date', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkSenderAndDate1', baseContext);
 
-      textMessage = await orderPageMessagesBlock.getTextMessage(page);
+      textMessage = await boOrdersViewBlockMessagesPage.getTextMessage(page);
       expect(textMessage).to.contains(`Me ${today}`);
     });
 
     it('should check the employee icon, the message date and the message sender', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkEmployeeIcon1', baseContext);
 
-      const isVisible = await orderPageMessagesBlock.isEmployeeIconVisible(page);
+      const isVisible = await boOrdersViewBlockMessagesPage.isEmployeeIconVisible(page);
       expect(isVisible).to.eq(true);
     });
   });
@@ -174,70 +173,70 @@ describe('BO - Orders - View and edit order : Check messages block', async () =>
       await testContext.addContextItem(this, 'testIdentifier', 'goToFoToCheckStatus1', baseContext);
 
       // Click on view my shop
-      page = await orderPageMessagesBlock.viewMyShop(page);
+      page = await boOrdersViewBlockMessagesPage.viewMyShop(page);
       // Change FO language
-      await foHomePage.changeLanguage(page, 'en');
+      await foClassicHomePage.changeLanguage(page, 'en');
 
-      const isHomePage = await foHomePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Fail to open FO home page').to.eq(true);
     });
 
     it('should go to login page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToLoginPageFoToCheckStatus1', baseContext);
 
-      await foHomePage.goToLoginPage(page);
+      await foClassicHomePage.goToLoginPage(page);
 
-      const pageTitle = await foLoginPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open FO login page').to.contains(foLoginPage.pageTitle);
+      const pageTitle = await foClassicLoginPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open FO login page').to.contains(foClassicLoginPage.pageTitle);
     });
 
     it('should sign in with default customer', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'signInFo1', baseContext);
 
-      await foLoginPage.customerLogin(page, dataCustomers.johnDoe);
+      await foClassicLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-      const isCustomerConnected = await foLoginPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicLoginPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is not connected').to.eq(true);
     });
 
     it('should go to orders history page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrderHistoryPage1', baseContext);
 
-      await foHomePage.goToMyAccountPage(page);
-      await myAccountPage.goToHistoryAndDetailsPage(page);
+      await foClassicHomePage.goToMyAccountPage(page);
+      await foClassicMyAccountPage.goToHistoryAndDetailsPage(page);
 
-      const pageTitle = await orderHistoryPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open order history page').to.contains(orderHistoryPage.pageTitle);
+      const pageTitle = await foClassicMyOrderHistoryPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open order history page').to.contains(foClassicMyOrderHistoryPage.pageTitle);
     });
 
     it('should go to the first order in the list and check order message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkOrderMessageBlock1', baseContext);
 
-      await orderHistoryPage.goToDetailsPage(page, 1);
+      await foClassicMyOrderHistoryPage.goToDetailsPage(page, 1);
 
-      const isBoxMessagesVisible = await orderHistoryPage.isBoxMessagesSectionVisible(page);
+      const isBoxMessagesVisible = await foClassicMyOrderHistoryPage.isBoxMessagesSectionVisible(page);
       expect(isBoxMessagesVisible, 'Box messages is not visible!').to.eq(true);
 
-      const isMessageRowVisible = await orderHistoryPage.isMessageRowVisible(page);
+      const isMessageRowVisible = await foClassicMyOrderHistoryPage.isMessageRowVisible(page);
       expect(isMessageRowVisible, 'Message is not visible!').to.eq(true);
     });
 
     it('should check the message text', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkOrderMessageBlock2', baseContext);
 
-      const message = await orderHistoryPage.getMessageRow(page);
+      const message = await foClassicMyOrderHistoryPage.getMessageRow(page);
       expect(message)
         .to.contain(today)
-        .and.to.contain(`${Employees.DefaultEmployee.firstName} ${Employees.DefaultEmployee.lastName}`)
+        .and.to.contain(`${dataEmployees.defaultEmployee.firstName} ${dataEmployees.defaultEmployee.lastName}`)
         .and.to.contain(textMessage.substring(0, textMessage.indexOf('Me') - 1));
     });
 
     it('should sign out from FO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'signOutFO2', baseContext);
 
-      await foOrderConfirmationPage.logout(page);
+      await foClassicCheckoutOrderConfirmationPage.logout(page);
 
-      const isCustomerConnected = await foOrderConfirmationPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicCheckoutOrderConfirmationPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is connected').to.eq(false);
     });
   });
@@ -248,44 +247,44 @@ describe('BO - Orders - View and edit order : Check messages block', async () =>
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBo1', baseContext);
 
       // Close page and init page objects
-      page = await foOrderConfirmationPage.closePage(browserContext, page, 0);
+      page = await foClassicCheckoutOrderConfirmationPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await orderPageMessagesBlock.getPageTitle(page);
-      expect(pageTitle).to.contains(orderPageMessagesBlock.pageTitle);
+      const pageTitle = await boOrdersViewBlockMessagesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boOrdersViewBlockMessagesPage.pageTitle);
     });
 
     it('should send second message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'sendMessage1', baseContext);
 
-      const textMessage = await orderPageMessagesBlock.sendMessage(page, secondMessageData);
-      expect(textMessage).to.equal(orderPageMessagesBlock.commentSuccessfullMessage);
+      const textMessage = await boOrdersViewBlockMessagesPage.sendMessage(page, secondMessageData);
+      expect(textMessage).to.equal(boOrdersViewBlockMessagesPage.commentSuccessfullMessage);
     });
 
     it('should check that messages number is equal to 2', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMessageNumber2', baseContext);
 
-      const messagesNumber = await orderPageMessagesBlock.getMessagesNumber(page);
+      const messagesNumber = await boOrdersViewBlockMessagesPage.getMessagesNumber(page);
       expect(messagesNumber).to.be.equal(2);
     });
 
     it('should check that the second message is visible', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMessage2', baseContext);
 
-      const isVisible = await orderPageMessagesBlock.isMessageVisible(page, 2);
+      const isVisible = await boOrdersViewBlockMessagesPage.isMessageVisible(page, 2);
       expect(isVisible).to.eq(true);
     });
 
     it('should check that the employee icon is private', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkEmployeeIcon2', baseContext);
 
-      const isVisible = await orderPageMessagesBlock.isEmployeePrivateIconVisible(page, 2);
+      const isVisible = await boOrdersViewBlockMessagesPage.isEmployeePrivateIconVisible(page, 2);
       expect(isVisible).to.eq(true);
     });
 
     it('should check the sender message and the date', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkSenderAndDate2', baseContext);
 
-      textMessage = await orderPageMessagesBlock.getTextMessage(page, 2);
+      textMessage = await boOrdersViewBlockMessagesPage.getTextMessage(page, 2);
       expect(textMessage, 'Sender or date is incorrect!').to.contains(`Me ${today}`);
     });
   });
@@ -296,49 +295,49 @@ describe('BO - Orders - View and edit order : Check messages block', async () =>
       await testContext.addContextItem(this, 'testIdentifier', 'goToFoToCheckStatus2', baseContext);
 
       // Click on view my shop
-      page = await orderPageMessagesBlock.viewMyShop(page);
+      page = await boOrdersViewBlockMessagesPage.viewMyShop(page);
       // Change FO language
-      await foHomePage.changeLanguage(page, 'en');
+      await foClassicHomePage.changeLanguage(page, 'en');
 
-      const isHomePage = await foHomePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Fail to open FO home page').to.eq(true);
     });
 
     it('should go to login page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToLoginPageFoToCheckStatus2', baseContext);
 
-      await foHomePage.goToLoginPage(page);
+      await foClassicHomePage.goToLoginPage(page);
 
-      const pageTitle = await foLoginPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open FO login page').to.contains(foLoginPage.pageTitle);
+      const pageTitle = await foClassicLoginPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open FO login page').to.contains(foClassicLoginPage.pageTitle);
     });
 
     it('should sign in with default customer', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'signInFo2', baseContext);
 
-      await foLoginPage.customerLogin(page, dataCustomers.johnDoe);
+      await foClassicLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-      const isCustomerConnected = await foLoginPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicLoginPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is not connected').to.eq(true);
     });
 
     it('should go to orders history page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrderHistoryPage2', baseContext);
 
-      await foHomePage.goToMyAccountPage(page);
-      await myAccountPage.goToHistoryAndDetailsPage(page);
+      await foClassicHomePage.goToMyAccountPage(page);
+      await foClassicMyAccountPage.goToHistoryAndDetailsPage(page);
 
-      const pageTitle = await orderHistoryPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open order history page').to.contains(orderHistoryPage.pageTitle);
+      const pageTitle = await foClassicMyOrderHistoryPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open order history page').to.contains(foClassicMyOrderHistoryPage.pageTitle);
     });
 
     it('should go to the first order in the list and check that new message is not visible', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkOrderMessageBlock3', baseContext);
 
-      await orderHistoryPage.goToDetailsPage(page, 1);
+      await foClassicMyOrderHistoryPage.goToDetailsPage(page, 1);
 
       // New message is on the first row
-      const message = await orderHistoryPage.getMessageRow(page, 1);
+      const message = await foClassicMyOrderHistoryPage.getMessageRow(page, 1);
       expect(message, 'Second message is not visible!').to.not.contain(secondMessageData.message);
     });
   });
@@ -348,40 +347,40 @@ describe('BO - Orders - View and edit order : Check messages block', async () =>
     it('should send message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'sendMessage2', baseContext);
 
-      const alertMessage = await orderHistoryPage.sendMessage(page, messageToSendData);
-      expect(alertMessage, 'Success message is not displayed!').to.equal(orderHistoryPage.messageSuccessSent);
+      const alertMessage = await foClassicMyOrderHistoryPage.sendMessage(page, messageToSendData);
+      expect(alertMessage, 'Success message is not displayed!').to.equal(foClassicMyOrderHistoryPage.messageSuccessSent);
     });
 
     it('should go back to BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBo2', baseContext);
 
       // Close page and init page objects
-      page = await orderHistoryPage.closePage(browserContext, page, 0);
+      page = await foClassicMyOrderHistoryPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await orderPageMessagesBlock.getPageTitle(page);
-      expect(pageTitle, 'Fail to go back to BO!').to.contains(orderPageMessagesBlock.pageTitle);
+      const pageTitle = await boOrdersViewBlockMessagesPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to go back to BO!').to.contains(boOrdersViewBlockMessagesPage.pageTitle);
     });
 
     it('should reload the page and check that the messages number is equal to 3', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMessageNumber3', baseContext);
 
-      await orderPageMessagesBlock.reloadPage(page);
+      await boOrdersViewBlockMessagesPage.reloadPage(page);
 
-      const messagesNumber = await orderPageMessagesBlock.getMessagesNumber(page);
+      const messagesNumber = await boOrdersViewBlockMessagesPage.getMessagesNumber(page);
       expect(messagesNumber, 'Messages number is not correct!').to.be.equal(3);
     });
 
     it('should check that the third message is visible', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkThirdMessage', baseContext);
 
-      const isVisible = await orderPageMessagesBlock.isMessageVisible(page, 3, 'customer');
+      const isVisible = await boOrdersViewBlockMessagesPage.isMessageVisible(page, 3, 'customer');
       expect(isVisible, 'Message is not visible!').to.eq(true);
     });
 
     it('should check the message, the sender message and the date', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkSenderAndDate3', baseContext);
 
-      textMessage = await orderPageMessagesBlock.getTextMessage(page, 3, 'customer');
+      textMessage = await boOrdersViewBlockMessagesPage.getTextMessage(page, 3, 'customer');
       expect(textMessage, 'Sender or date is not correct!')
         .to.contains(`${dataCustomers.johnDoe.firstName} ${dataCustomers.johnDoe.lastName} ${today}`)
         .and.to.contains(messageToSendData.message);
@@ -393,10 +392,10 @@ describe('BO - Orders - View and edit order : Check messages block', async () =>
     it('should click on \'Configure predefined messages\' link', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkLink', baseContext);
 
-      await orderPageMessagesBlock.clickOnConfigureMessageLink(page);
+      await boOrdersViewBlockMessagesPage.clickOnConfigureMessageLink(page);
 
-      const pageTitle = await orderMessagesPage.getPageTitle(page);
-      expect(pageTitle, 'Order messages page is not opened!').to.contains(orderMessagesPage.pageTitle);
+      const pageTitle = await boOrderMessagesPage.getPageTitle(page);
+      expect(pageTitle, 'Order messages page is not opened!').to.contains(boOrderMessagesPage.pageTitle);
     });
   });
 });

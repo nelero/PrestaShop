@@ -28,6 +28,6 @@ namespace PrestaShopBundle\Security\Admin\Exception;
 
 use RuntimeException;
 
-class InvalidResetPaswordTokenException extends RuntimeException
+class InvalidResetPasswordTokenException extends RuntimeException
 {
 }

@@ -27,6 +27,7 @@
 namespace PrestaShopBundle\Service\Routing;
 
 use PrestaShop\PrestaShop\Core\Feature\TokenInUrls;
+use PrestaShopBundle\Routing\AnonymousRouteProvider;
 use PrestaShopBundle\Security\Admin\UserTokenManager;
 use Symfony\Bundle\FrameworkBundle\Routing\Router as BaseRouter;
 
@@ -37,10 +38,9 @@ use Symfony\Bundle\FrameworkBundle\Routing\Router as BaseRouter;
  */
 class Router extends BaseRouter
 {
-    /**
-     * @var UserTokenManager
-     */
-    private $userTokenManager;
+    private UserTokenManager $userTokenManager;
+
+    private AnonymousRouteProvider $anonymousRouteProvider;
 
     /**
      * {@inheritdoc}
@@ -48,16 +48,21 @@ class Router extends BaseRouter
     public function generate($name, $parameters = [], $referenceType = self::ABSOLUTE_PATH): string
     {
         $url = parent::generate($name, $parameters, $referenceType);
-        if (TokenInUrls::isDisabled()) {
+        if (TokenInUrls::isDisabled() || $this->anonymousRouteProvider->isRouteAnonymous($name)) {
             return $url;
         }
 
         return self::generateTokenizedUrl($url, $this->userTokenManager->getSymfonyToken());
     }
 
-    public function setUserTokenManager(UserTokenManager $userTokenManager)
+    public function setUserTokenManager(UserTokenManager $userTokenManager): void
     {
         $this->userTokenManager = $userTokenManager;
+    }
+
+    public function setAnonymousRouteProvider(AnonymousRouteProvider $anonymousRouteProvider): void
+    {
+        $this->anonymousRouteProvider = $anonymousRouteProvider;
     }
 
     public static function generateTokenizedUrl($url, $token)
@@ -77,6 +82,15 @@ class Router extends BaseRouter
         if (isset($components['fragment']) && $components['fragment'] !== '') {
             /* This copy-paste from Symfony's UrlGenerator */
             $url .= '#' . strtr(rawurlencode($components['fragment']), ['%2F' => '/', '%3F' => '?']);
+        }
+
+        // Keep absolute urls absolute
+        if (!empty($components['scheme']) && !empty($components['host'])) {
+            $baseHost = $components['scheme'] . '://' . $components['host'];
+            if (!empty($components['port'])) {
+                $baseHost .= ':' . $components['port'];
+            }
+            $url = $baseHost . $url;
         }
 
         return $url;

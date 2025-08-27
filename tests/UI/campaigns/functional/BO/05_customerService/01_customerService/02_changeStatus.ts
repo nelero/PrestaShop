@@ -1,32 +1,22 @@
-// Import utils
-import files from '@utils/files';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-// Import BO pages
-import customerServicePage from '@pages/BO/customerService/customerService';
-import viewPage from '@pages/BO/customerService/customerService/view';
-import dashboardPage from '@pages/BO/dashboard';
-// Import FO pages
-import {contactUsPage} from '@pages/FO/classic/contactUs';
-import {homePage} from '@pages/FO/classic/home';
-import {loginPage as foLoginPage} from '@pages/FO/classic/login';
-
-// Import data
-import MessageData from '@data/faker/message';
-import Employees from '@data/demo/employees';
+import {expect} from 'chai';
 
 import {
-  // Import data
+  boCustomerServicePage,
+  boCustomerServiceViewPage,
+  boDashboardPage,
+  boLoginPage,
+  type BrowserContext,
   dataCustomers,
+  dataEmployees,
+  FakerContactMessage,
+  foClassicContactUsPage,
+  foClassicHomePage,
+  foClassicLoginPage,
+  type Page,
+  utilsFile,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_customerService_customerService_changeStatus';
 
@@ -38,52 +28,52 @@ describe('BO - Customer Service : Change status', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
-  const contactUsData: MessageData = new MessageData({subject: 'Customer service', reference: 'OHSATSERP'});
+  const contactUsData: FakerContactMessage = new FakerContactMessage({subject: 'Customer service', reference: 'OHSATSERP'});
 
-  const forwardMessageData: MessageData = new MessageData({
-    employeeName: `${Employees.DefaultEmployee.firstName.slice(0, 1)}. ${Employees.DefaultEmployee.lastName}`,
+  const forwardMessageData: FakerContactMessage = new FakerContactMessage({
+    employeeName: `${dataEmployees.defaultEmployee.firstName.slice(0, 1)}. ${dataEmployees.defaultEmployee.lastName}`,
     message: 'Forward message',
   });
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
-    await files.generateImage(`${contactUsData.fileName}.jpg`);
+    await utilsFile.generateImage(`${contactUsData.fileName}.jpg`);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
-    await files.deleteFile(`${contactUsData.fileName}.jpg`);
+    await utilsFile.deleteFile(`${contactUsData.fileName}.jpg`);
   });
 
   describe('FO : Send message to customer service', async () => {
     it('should open the shop page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'openShop', baseContext);
 
-      await homePage.goTo(page, global.FO.URL);
+      await foClassicHomePage.goTo(page, global.FO.URL);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Fail to open FO home page').to.eq(true);
     });
 
     it('should go to login page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToLoginFO', baseContext);
 
-      await homePage.goToLoginPage(page);
+      await foClassicHomePage.goToLoginPage(page);
 
-      const pageTitle = await foLoginPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open FO login page').to.contains(foLoginPage.pageTitle);
+      const pageTitle = await foClassicLoginPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open FO login page').to.contains(foClassicLoginPage.pageTitle);
     });
 
     it('should sign in with default customer', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'sighInFO', baseContext);
 
-      await foLoginPage.customerLogin(page, dataCustomers.johnDoe);
+      await foClassicLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-      const isCustomerConnected = await foLoginPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicLoginPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is not connected').to.eq(true);
     });
 
@@ -91,38 +81,44 @@ describe('BO - Customer Service : Change status', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'goToContactPage', baseContext);
 
       // Go to contact us page
-      await homePage.goToFooterLink(page, 'Contact us');
+      await foClassicHomePage.goToFooterLink(page, 'Contact us');
 
-      const pageTitle = await contactUsPage.getPageTitle(page);
-      expect(pageTitle).to.equal(contactUsPage.pageTitle);
+      const pageTitle = await foClassicContactUsPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foClassicContactUsPage.pageTitle);
     });
 
     it('should send message to customer service', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'sendMessage', baseContext);
 
-      await contactUsPage.sendMessage(page, contactUsData, `${contactUsData.fileName}.jpg`);
+      await foClassicContactUsPage.sendMessage(page, contactUsData, `${contactUsData.fileName}.jpg`);
 
-      const validationMessage = await contactUsPage.getAlertSuccess(page);
-      expect(validationMessage).to.equal(contactUsPage.validationMessage);
+      const validationMessage = await foClassicContactUsPage.getAlertSuccess(page);
+      expect(validationMessage).to.equal(foClassicContactUsPage.validationMessage);
     });
   });
 
   describe('BO : Change message status and check it', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Customer Service > Customer Service\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrderMessagesPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.customerServiceParentLink,
-        dashboardPage.customerServiceLink,
+        boDashboardPage.customerServiceParentLink,
+        boDashboardPage.customerServiceLink,
       );
 
-      const pageTitle = await customerServicePage.getPageTitle(page);
-      expect(pageTitle).to.contains(customerServicePage.pageTitle);
+      const pageTitle = await boCustomerServicePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerServicePage.pageTitle);
     });
     [
       {args: {status: 'Handled', statusToCheck: 'Re-open'}},
@@ -133,36 +129,36 @@ describe('BO - Customer Service : Change status', async () => {
       it('should go to view message page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToViewMessagePage${index}`, baseContext);
 
-        await customerServicePage.goToViewMessagePage(page);
+        await boCustomerServicePage.goToViewMessagePage(page);
 
-        const pageTitle = await viewPage.getPageTitle(page);
-        expect(pageTitle).to.contains(viewPage.pageTitle);
+        const pageTitle = await boCustomerServiceViewPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boCustomerServiceViewPage.pageTitle);
       });
 
       it(`should change the order status to '${test.args.status}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `setOrderStatus${test.args.status}`, baseContext);
 
-        const newStatus = await viewPage.setStatus(page, test.args.status);
+        const newStatus = await boCustomerServiceViewPage.setStatus(page, test.args.status);
         expect(newStatus).to.contains(test.args.statusToCheck);
       });
 
       it('should go to \'Customer Service > Customer Service\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToOrderMessagesPage${index}`, baseContext);
 
-        await dashboardPage.goToSubMenu(
+        await boDashboardPage.goToSubMenu(
           page,
-          dashboardPage.customerServiceParentLink,
-          dashboardPage.customerServiceLink,
+          boDashboardPage.customerServiceParentLink,
+          boDashboardPage.customerServiceLink,
         );
 
-        const pageTitle = await customerServicePage.getPageTitle(page);
-        expect(pageTitle).to.contains(customerServicePage.pageTitle);
+        const pageTitle = await boCustomerServicePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boCustomerServicePage.pageTitle);
       });
 
       it('should check if the status color is changed', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkStatusColor${index}`, baseContext);
 
-        const isChanged = await customerServicePage.isStatusChanged(page, 1, test.args.status);
+        const isChanged = await boCustomerServicePage.isStatusChanged(page, 1, test.args.status);
         expect(isChanged).to.eq(true);
       });
     });
@@ -172,38 +168,38 @@ describe('BO - Customer Service : Change status', async () => {
     it('should go to view message page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToViewMessagePage', baseContext);
 
-      await customerServicePage.goToViewMessagePage(page);
+      await boCustomerServicePage.goToViewMessagePage(page);
 
-      const pageTitle = await viewPage.getPageTitle(page);
-      expect(pageTitle).to.contains(viewPage.pageTitle);
+      const pageTitle = await boCustomerServiceViewPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerServiceViewPage.pageTitle);
     });
 
     it('should click on forward message button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnForwardButton', baseContext);
 
-      const isModalVisible = await viewPage.clickOnForwardMessageButton(page);
+      const isModalVisible = await boCustomerServiceViewPage.clickOnForwardMessageButton(page);
       expect(isModalVisible).to.eq(true);
     });
 
     it('should forward the message and check the thread', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'forwardMessage', baseContext);
 
-      await viewPage.forwardMessage(page, forwardMessageData);
+      await boCustomerServiceViewPage.forwardMessage(page, forwardMessageData);
 
-      const messages = await viewPage.getThreadMessages(page);
+      const messages = await boCustomerServiceViewPage.getThreadMessages(page);
       expect(messages)
-        .to.contains(`${viewPage.forwardMessageSuccessMessage} ${Employees.DefaultEmployee.firstName}`
-          + ` ${Employees.DefaultEmployee.lastName}`)
+        .to.contains(`${boCustomerServiceViewPage.forwardMessageSuccessMessage} ${dataEmployees.defaultEmployee.firstName}`
+          + ` ${dataEmployees.defaultEmployee.lastName}`)
         .and.contains(forwardMessageData.message);
     });
 
     it('should check orders and messages timeline', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkOrdersAndMessagesForm', baseContext);
 
-      const text = await viewPage.getOrdersAndMessagesTimeline(page);
+      const text = await boCustomerServiceViewPage.getOrdersAndMessagesTimeline(page);
       expect(text).to.contains('Orders and messages timeline')
-        .and.contains(`${viewPage.forwardMessageSuccessMessage} ${Employees.DefaultEmployee.firstName}`
-        + ` ${Employees.DefaultEmployee.lastName}`)
+        .and.contains(`${boCustomerServiceViewPage.forwardMessageSuccessMessage} ${dataEmployees.defaultEmployee.firstName}`
+        + ` ${dataEmployees.defaultEmployee.lastName}`)
         .and.contains(`Comment: ${forwardMessageData.message}`);
     });
   });
@@ -212,21 +208,21 @@ describe('BO - Customer Service : Change status', async () => {
     it('should go to \'Customer Service > Customer Service\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrderMessagesPageToDelete', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.customerServiceParentLink,
-        dashboardPage.customerServiceLink,
+        boDashboardPage.customerServiceParentLink,
+        boDashboardPage.customerServiceLink,
       );
 
-      const pageTitle = await customerServicePage.getPageTitle(page);
-      expect(pageTitle).to.contains(customerServicePage.pageTitle);
+      const pageTitle = await boCustomerServicePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerServicePage.pageTitle);
     });
 
     it('should delete the message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteMessage', baseContext);
 
-      const textResult = await customerServicePage.deleteMessage(page, 1);
-      expect(textResult).to.contains(customerServicePage.successfulDeleteMessage);
+      const textResult = await boCustomerServicePage.deleteMessage(page, 1);
+      expect(textResult).to.contains(boCustomerServicePage.successfulDeleteMessage);
     });
   });
 });

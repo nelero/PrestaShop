@@ -1,26 +1,22 @@
-// Import utils
-import basicHelper from '@utils/basicHelper';
-import files from '@utils/files';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-import categoriesPage from '@pages/BO/catalog/categories';
-import addCategoryPage from '@pages/BO/catalog/categories/add';
-import productsPage from '@pages/BO/catalog/products';
-import createProductsPage from '@pages/BO/catalog/products/add';
-import dashboardPage from '@pages/BO/dashboard';
-import imageSettingsPage from '@pages/BO/design/imageSettings';
-
-// Import data
-import CategoryData from '@data/faker/category';
-import ProductData from '@data/faker/product';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  boCategoriesPage,
+  boCategoriesCreatePage,
+  boDashboardPage,
+  boImageSettingsPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  type BrowserContext,
+  FakerCategory,
+  FakerProduct,
+  type Page,
+  utilsCore,
+  utilsFile,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_design_imageSettings_imageGenerationOnCreation';
 
@@ -32,7 +28,7 @@ describe('BO - Design - Image Settings - Image Generation on creation', async ()
   let idProduct: number = 0;
   let idCategory: number = 0;
 
-  const productData: ProductData = new ProductData({
+  const productData: FakerProduct = new FakerProduct({
     type: 'standard',
     coverImage: 'cover.jpg',
     thumbImage: 'thumb.jpg',
@@ -42,15 +38,14 @@ describe('BO - Design - Image Settings - Image Generation on creation', async ()
     minimumQuantity: 2,
     status: true,
   });
-  const categoryData: CategoryData = new CategoryData({
+  const categoryData: FakerCategory = new FakerCategory({
     coverImage: 'cover.jpg',
     thumbnailImage: 'thumb.jpg',
   });
 
-  // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
     await Promise.all([
       productData.coverImage,
@@ -59,13 +54,13 @@ describe('BO - Design - Image Settings - Image Generation on creation', async ()
       categoryData.thumbnailImage,
     ].map(async (image: string|null) => {
       if (image) {
-        await files.generateImage(image);
+        await utilsFile.generateImage(image);
       }
     }));
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
     await Promise.all([
       productData.coverImage,
@@ -74,60 +69,66 @@ describe('BO - Design - Image Settings - Image Generation on creation', async ()
       categoryData.thumbnailImage,
     ].map(async (image: string|null) => {
       if (image) {
-        await files.deleteFile(image);
+        await utilsFile.deleteFile(image);
       }
     }));
   });
 
   describe('Enable WebP for image generation', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Design > Image Settings\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToImageSettingsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.designParentLink,
-        dashboardPage.imageSettingsLink,
+        boDashboardPage.designParentLink,
+        boDashboardPage.imageSettingsLink,
       );
-      await imageSettingsPage.closeSfToolBar(page);
+      await boImageSettingsPage.closeSfToolBar(page);
 
-      const pageTitle = await imageSettingsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(imageSettingsPage.pageTitle);
+      const pageTitle = await boImageSettingsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boImageSettingsPage.pageTitle);
     });
 
     it('should enable WebP image format', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'enableWebP', baseContext);
 
-      const result = await imageSettingsPage.setImageFormatToGenerateChecked(page, 'webp', true);
-      expect(result).to.be.eq(imageSettingsPage.messageSettingsUpdated);
+      const result = await boImageSettingsPage.setImageFormatToGenerateChecked(page, 'webp', true);
+      expect(result).to.be.eq(boImageSettingsPage.messageSettingsUpdated);
     });
 
     it('should check image generation options', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkImageGenerationOptions', baseContext);
 
       // JPEG/PNG should be checked
-      const jpegChecked = await imageSettingsPage.isImageFormatToGenerateChecked(page, 'jpg');
+      const jpegChecked = await boImageSettingsPage.isImageFormatToGenerateChecked(page, 'jpg');
       expect(jpegChecked).to.eq(true);
 
       // JPEG/PNG should be checked
-      const jpegDisabled = await imageSettingsPage.isImageFormatToGenerateDisabled(page, 'jpg');
+      const jpegDisabled = await boImageSettingsPage.isImageFormatToGenerateDisabled(page, 'jpg');
       expect(jpegDisabled).to.eq(true);
 
       // WebP should be checked
-      const webpChecked = await imageSettingsPage.isImageFormatToGenerateChecked(page, 'webp');
+      const webpChecked = await boImageSettingsPage.isImageFormatToGenerateChecked(page, 'webp');
       expect(webpChecked).to.eq(true);
     });
 
     it('should fetch image name', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'fetchImageName', baseContext);
 
-      imageTypeProducts = await imageSettingsPage.getRegenerateThumbnailsFormats(page, 'products');
+      imageTypeProducts = await boImageSettingsPage.getRegenerateThumbnailsFormats(page, 'products');
       expect(imageTypeProducts.length).to.gt(0);
 
-      imageTypeCategories = await imageSettingsPage.getRegenerateThumbnailsFormats(page, 'categories');
+      imageTypeCategories = await boImageSettingsPage.getRegenerateThumbnailsFormats(page, 'categories');
       expect(imageTypeCategories.length).to.gt(0);
     });
   });
@@ -136,65 +137,65 @@ describe('BO - Design - Image Settings - Image Generation on creation', async ()
     it('should go to \'Catalog > Products\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.catalogParentLink,
-        dashboardPage.productsLink,
+        boDashboardPage.catalogParentLink,
+        boDashboardPage.productsLink,
       );
 
-      await productsPage.closeSfToolBar(page);
+      await boProductsPage.closeSfToolBar(page);
 
-      const pageTitle = await productsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(productsPage.pageTitle);
+      const pageTitle = await boProductsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsPage.pageTitle);
     });
 
     it('should click on \'New product\' button and check new product modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewProductButton', baseContext);
 
-      const isModalVisible = await productsPage.clickOnNewProductButton(page);
+      const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
       expect(isModalVisible).to.eq(true);
     });
 
     it('should check the standard product description', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkStandardProductDescription', baseContext);
 
-      const productTypeDescription = await productsPage.getProductDescription(page);
-      expect(productTypeDescription).to.contains(productsPage.standardProductDescription);
+      const productTypeDescription = await boProductsPage.getProductDescription(page);
+      expect(productTypeDescription).to.contains(boProductsPage.standardProductDescription);
     });
 
     it('should choose \'Standard product\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'chooseStandardProduct', baseContext);
 
-      await productsPage.selectProductType(page, productData.type);
+      await boProductsPage.selectProductType(page, productData.type);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should go to new product page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToNewProductPage', baseContext);
 
-      await productsPage.clickOnAddNewProduct(page);
+      await boProductsPage.clickOnAddNewProduct(page);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should create standard product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createStandardProduct', baseContext);
 
-      await createProductsPage.closeSfToolBar(page);
+      await boProductsCreatePage.closeSfToolBar(page);
 
-      const createProductMessage = await createProductsPage.setProduct(page, productData);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.setProduct(page, productData);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
 
     it('should check the product header details', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkProductHeaderDetails', baseContext);
 
-      const taxValue = await basicHelper.percentage(productData.priceTaxExcluded, productData.tax);
+      const taxValue = utilsCore.percentage(productData.priceTaxExcluded, productData.tax);
 
-      const productHeaderSummary = await createProductsPage.getProductHeaderSummary(page);
+      const productHeaderSummary = await boProductsCreatePage.getProductHeaderSummary(page);
       await Promise.all([
         expect(productHeaderSummary.priceTaxExc).to.equal(`€${(productData.priceTaxExcluded.toFixed(2))} tax excl.`),
         expect(productHeaderSummary.priceTaxIncl).to.equal(
@@ -207,10 +208,10 @@ describe('BO - Design - Image Settings - Image Generation on creation', async ()
     it('should check that the save button is changed to \'Save and publish\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkSaveButton', baseContext);
 
-      const saveButtonName = await createProductsPage.getSaveButtonName(page);
+      const saveButtonName = await boProductsCreatePage.getSaveButtonName(page);
       expect(saveButtonName).to.equal('Save and publish');
 
-      idProduct = await createProductsPage.getProductID(page);
+      idProduct = await boProductsCreatePage.getProductID(page);
       expect(idProduct).to.be.gt(0);
     });
 
@@ -225,17 +226,17 @@ describe('BO - Design - Image Settings - Image Generation on creation', async ()
 
       const pathProductId: string = pathProductIdSplitted.join('/');
 
-      const fileJpegExists = await files.doesFileExist(`${files.getRootPath()}/img/p/${pathProductId}/${idProduct}.jpg`);
+      const fileJpegExists = await utilsFile.doesFileExist(`${utilsFile.getRootPath()}/img/p/${pathProductId}/${idProduct}.jpg`);
       expect(fileJpegExists, 'File doesn\'t exist!').to.eq(true);
 
       await Promise.all(imageTypeProducts.map(async (imageTypeName: string) => {
-        const fileJpegExists = await files.doesFileExist(
-          `${files.getRootPath()}/img/p/${pathProductId}/${idProduct}-${imageTypeName}.jpg`,
+        const fileJpegExists = await utilsFile.doesFileExist(
+          `${utilsFile.getRootPath()}/img/p/${pathProductId}/${idProduct}-${imageTypeName}.jpg`,
         );
         expect(fileJpegExists, 'File doesn\'t exist!').to.eq(true);
 
-        const fileWebpExists = await files.doesFileExist(
-          `${files.getRootPath()}/img/p/${pathProductId}/${idProduct}-${imageTypeName}.webp`,
+        const fileWebpExists = await utilsFile.doesFileExist(
+          `${utilsFile.getRootPath()}/img/p/${pathProductId}/${idProduct}-${imageTypeName}.webp`,
         );
         expect(fileWebpExists, 'File doesn\'t exist!').to.eq(true);
       }));
@@ -246,72 +247,69 @@ describe('BO - Design - Image Settings - Image Generation on creation', async ()
     it('should go to \'Catalog > Categories\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCategoriesPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.catalogParentLink,
-        dashboardPage.categoriesLink,
+        boDashboardPage.catalogParentLink,
+        boDashboardPage.categoriesLink,
       );
-      await categoriesPage.closeSfToolBar(page);
+      await boCategoriesPage.closeSfToolBar(page);
 
-      const pageTitle = await categoriesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(categoriesPage.pageTitle);
+      const pageTitle = await boCategoriesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCategoriesPage.pageTitle);
     });
 
     it('should go to add new category page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToNewCategoryPage', baseContext);
 
-      await categoriesPage.goToAddNewCategoryPage(page);
+      await boCategoriesPage.goToAddNewCategoryPage(page);
 
-      const pageTitle = await addCategoryPage.getPageTitle(page);
-      expect(pageTitle).to.contains(addCategoryPage.pageTitleCreate);
+      const pageTitle = await boCategoriesCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCategoriesCreatePage.pageTitleCreate);
     });
 
     it('should create category', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createCategory', baseContext);
 
-      const textResult = await addCategoryPage.createEditCategory(page, categoryData);
-      expect(textResult).to.equal(categoriesPage.successfulCreationMessage);
+      const textResult = await boCategoriesCreatePage.createEditCategory(page, categoryData);
+      expect(textResult).to.equal(boCategoriesPage.successfulCreationMessage);
     });
 
     it('should filter category by Name and fetch the ID', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterCategoryByName', baseContext);
 
-      await categoriesPage.filterCategories(
+      await boCategoriesPage.filterCategories(
         page,
         'input',
         'name',
         categoryData.name,
       );
 
-      const numberOfCategoriesAfterFilter = await categoriesPage.getNumberOfElementInGrid(page);
+      const numberOfCategoriesAfterFilter = await boCategoriesPage.getNumberOfElementInGrid(page);
       expect(numberOfCategoriesAfterFilter).to.be.eq(1);
 
-      idCategory = parseInt(await categoriesPage.getTextColumnFromTableCategories(page, 1, 'id_category'), 10);
+      idCategory = parseInt(await boCategoriesPage.getTextColumnFromTableCategories(page, 1, 'id_category'), 10);
       expect(idCategory).to.be.gt(0);
     });
 
-    // @todo : https://github.com/PrestaShop/PrestaShop/issues/30520
     it('should check that images are generated', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkProductImagesFinal', baseContext);
 
-      this.skip();
-
       // Category Image
-      const categoryImageExists = await files.doesFileExist(`${files.getRootPath()}/img/c/${idCategory}.jpg`);
+      const categoryImageExists = await utilsFile.doesFileExist(`${utilsFile.getRootPath()}/img/c/${idCategory}.jpg`);
       expect(categoryImageExists, `File ${idCategory}.jpg doesn't exist!`).to.eq(true);
 
       // Thumnbail Image
-      const thumbnailImageExists = await files.doesFileExist(`${files.getRootPath()}/img/c/${idCategory}_thumb.jpg`);
+      const thumbnailImageExists = await utilsFile.doesFileExist(`${utilsFile.getRootPath()}/img/c/${idCategory}_thumb.jpg`);
       expect(thumbnailImageExists, `File ${idCategory}.jpg doesn't exist!`).to.eq(true);
 
       await Promise.all(imageTypeCategories.map(async (imageTypeName: string) => {
-        const fileJpegExists = await files.doesFileExist(
-          `${files.getRootPath()}/img/c/${idCategory}-${imageTypeName}.jpg`,
+        const fileJpegExists = await utilsFile.doesFileExist(
+          `${utilsFile.getRootPath()}/img/c/${idCategory}-${imageTypeName}.jpg`,
         );
         expect(fileJpegExists, `File ${idCategory}-${imageTypeName}.jpg doesn't exist!`).to.eq(true);
 
-        const fileWebpExists = await files.doesFileExist(
-          `${files.getRootPath()}/img/c/${idCategory}-${imageTypeName}.webp`,
+        const fileWebpExists = await utilsFile.doesFileExist(
+          `${utilsFile.getRootPath()}/img/c/${idCategory}-${imageTypeName}.webp`,
         );
         expect(fileWebpExists, `File ${idCategory}-${imageTypeName}.webp doesn't exist!`).to.eq(true);
       }));

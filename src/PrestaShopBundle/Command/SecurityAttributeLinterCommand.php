@@ -61,34 +61,37 @@ final class SecurityAttributeLinterCommand extends Command
      * @var array
      */
     private const EXCEPTION_ROUTES = [
+        'admin_category_simple_add_form',
         'admin_common_notifications',
         'admin_common_notifications_ack',
         'admin_common_pagination',
-        'admin_common_sidebar',
         'admin_common_reset_search',
         'admin_common_reset_search_by_filter_id',
-        'admin_security_compromised',
-        'admin_import_data_configuration_index_redirect',
-        'admin_country_states',
-        'admin_mail_theme_save_configuration_deprecated', // Deprecated
-        'admin_mail_theme_send_test_mail_deprecated',  // Deprecated
-        'admin_mail_theme_send_test_module_mail_deprecated',  // Deprecated
-        'admin_category_simple_add_form',
-        'admin_feature_get_feature_values',
-        'admin_shops_search',
-        'admin_employees_toggle_navigation',
-        'admin_employees_change_form_language',
-        'admin_module_notification_count',
-        'admin_product_new',
-        'admin_product_form',
-        'admin_import_file_upload',
-        'admin_emails_send_test',
-        'admin_employees_edit',
+        'admin_common_secured_file_image_reader',
+        'admin_common_sidebar',
         'admin_currencies_update_live_exchange_rates',
+        'admin_emails_send_test',
+        'admin_employees_change_form_language',
+        'admin_employees_edit',
+        'admin_employees_toggle_navigation',
+        'admin_feature_get_feature_values',
+        'admin_homepage',
+        'admin_import_data_configuration_index_redirect',
+        'admin_import_file_upload',
+        'admin_legacy_controller_route', // Internal check of permission not based on attributes
+        'admin_login',
+        'admin_logout',
+        'admin_module_import',
         'admin_module_manage_action',
         'admin_module_manage_action_bulk',
         'admin_module_manage_update_all',
-        'admin_module_import',
+        'admin_module_notification_count',
+        'admin_product_form',
+        'admin_product_new',
+        'admin_request_password_reset',
+        'admin_reset_password',
+        'admin_security_compromised',
+        'admin_shops_search',
         'admin_theme_customize_layouts',
     ];
 
@@ -151,7 +154,7 @@ final class SecurityAttributeLinterCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $actionToPerform = $input->getArgument('action');
 
@@ -168,7 +171,9 @@ final class SecurityAttributeLinterCommand extends Command
                 $this->listAllRoutesAndRelatedPermissions($input, $output);
                 break;
             case self::ACTION_FIND_MISSING:
-                $this->findRoutesWithMissingSecurityAttributes($input, $output);
+                if ($this->findRoutesWithMissingSecurityAttributes($input, $output)) {
+                    return 1;
+                }
                 break;
 
             default:
@@ -186,7 +191,7 @@ final class SecurityAttributeLinterCommand extends Command
     {
         $listing = [];
 
-        foreach ($this->adminRouteProvider->getRoutes() as $routeName => $route) {
+        foreach ($this->adminRouteProvider->getRoutes() as $route) {
             /* @var Route $route */
             try {
                 $attributes = $this->securityAttributeLinter->getRouteSecurityAttributes($route);
@@ -199,7 +204,7 @@ final class SecurityAttributeLinterCommand extends Command
                         self::parseExpression($attribute->getAttribute()),
                     ];
                 }
-            } catch (LinterException $e) {
+            } catch (LinterException) {
                 $listing[] = [
                     $route->getDefault('_controller'),
                     implode(', ', $route->getMethods()),
@@ -219,7 +224,7 @@ final class SecurityAttributeLinterCommand extends Command
      * @param InputInterface $input
      * @param OutputInterface $output
      */
-    private function findRoutesWithMissingSecurityAttributes(InputInterface $input, OutputInterface $output): void
+    private function findRoutesWithMissingSecurityAttributes(InputInterface $input, OutputInterface $output): bool
     {
         $notConfiguredRoutes = [];
 
@@ -230,7 +235,7 @@ final class SecurityAttributeLinterCommand extends Command
             }
             try {
                 $this->securityAttributeLinter->lint($routeName, $route);
-            } catch (LinterException $e) {
+            } catch (LinterException) {
                 $notConfiguredRoutes[] = $routeName;
             }
         }
@@ -244,9 +249,11 @@ final class SecurityAttributeLinterCommand extends Command
             ));
             $io->listing($notConfiguredRoutes);
 
-            return;
+            return true;
         }
 
         $io->success('All admin routes are secured with #[AdminSecurity].');
+
+        return false;
     }
 }

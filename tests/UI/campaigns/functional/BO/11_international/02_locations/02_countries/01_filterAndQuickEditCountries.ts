@@ -1,22 +1,16 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-import dashboardPage from '@pages/BO/dashboard';
-import zonesPage from '@pages/BO/international/locations';
-import countriesPage from '@pages/BO/international/locations/countries';
+import {expect} from 'chai';
 
 import {
-  // Import data
+  boCountriesPage,
+  boDashboardPage,
+  boLoginPage,
+  boZonesPage,
+  type BrowserContext,
   dataCountries,
+  type Page,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_international_locations_countries_filterAndQuickEditCountries';
 
@@ -31,45 +25,51 @@ describe('BO - International - Countries : Filter and quick edit', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   it('should go to \'International > Locations\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToLocationsPage', baseContext);
 
-    await dashboardPage.goToSubMenu(
+    await boDashboardPage.goToSubMenu(
       page,
-      dashboardPage.internationalParentLink,
-      dashboardPage.locationsLink,
+      boDashboardPage.internationalParentLink,
+      boDashboardPage.locationsLink,
     );
-    await zonesPage.closeSfToolBar(page);
+    await boZonesPage.closeSfToolBar(page);
 
-    const pageTitle = await zonesPage.getPageTitle(page);
-    expect(pageTitle).to.contains(zonesPage.pageTitle);
+    const pageTitle = await boZonesPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boZonesPage.pageTitle);
   });
 
   it('should go to \'Countries\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToCountriesPage', baseContext);
 
-    await zonesPage.goToSubTabCountries(page);
+    await boZonesPage.goToSubTabCountries(page);
 
-    const pageTitle = await countriesPage.getPageTitle(page);
-    expect(pageTitle).to.contains(countriesPage.pageTitle);
+    const pageTitle = await boCountriesPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boCountriesPage.pageTitle);
   });
 
   it('should reset all filters and get number of countries in BO', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirst', baseContext);
 
-    numberOfCountries = await countriesPage.resetAndGetNumberOfLines(page);
+    numberOfCountries = await boCountriesPage.resetAndGetNumberOfLines(page);
     expect(numberOfCountries).to.be.above(0);
   });
 
@@ -129,21 +129,21 @@ describe('BO - International - Countries : Filter and quick edit', async () => {
       it(`should filter by ${test.args.filterBy} '${test.args.filterValue}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', test.args.testIdentifier, baseContext);
 
-        await countriesPage.filterTable(
+        await boCountriesPage.filterTable(
           page,
           test.args.filterType,
           test.args.filterBy,
           test.args.filterValue,
         );
 
-        const numberOfCountriesAfterFilter = await countriesPage.getNumberOfElementInGrid(page);
+        const numberOfCountriesAfterFilter = await boCountriesPage.getNumberOfElementInGrid(page);
         expect(numberOfCountriesAfterFilter).to.be.at.most(numberOfCountries);
 
         if (test.args.filterBy === 'a!active') {
-          const countryStatus = await countriesPage.getCountryStatus(page, 1);
+          const countryStatus = await boCountriesPage.getCountryStatus(page, 1);
           expect(countryStatus).to.equal(test.args.filterValue === '1');
         } else {
-          const textColumn = await countriesPage.getTextColumnFromTable(
+          const textColumn = await boCountriesPage.getTextColumnFromTable(
             page,
             1,
             test.args.filterBy,
@@ -155,7 +155,7 @@ describe('BO - International - Countries : Filter and quick edit', async () => {
       it('should reset all filters', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.testIdentifier}Reset`, baseContext);
 
-        const numberOfCountriesAfterReset = await countriesPage.resetAndGetNumberOfLines(page);
+        const numberOfCountriesAfterReset = await boCountriesPage.resetAndGetNumberOfLines(page);
         expect(numberOfCountriesAfterReset).to.equal(numberOfCountries);
       });
     });
@@ -165,17 +165,17 @@ describe('BO - International - Countries : Filter and quick edit', async () => {
     it('should filter by name \'Germany\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterToQuickEdit', baseContext);
 
-      await countriesPage.filterTable(
+      await boCountriesPage.filterTable(
         page,
         'input',
         'b!name',
         dataCountries.germany.name,
       );
 
-      const numberOfCountriesAfterFilter = await countriesPage.getNumberOfElementInGrid(page);
+      const numberOfCountriesAfterFilter = await boCountriesPage.getNumberOfElementInGrid(page);
       expect(numberOfCountriesAfterFilter).to.be.below(numberOfCountries);
 
-      const textColumn = await countriesPage.getTextColumnFromTable(page, 1, 'b!name');
+      const textColumn = await boCountriesPage.getTextColumnFromTable(page, 1, 'b!name');
       expect(textColumn).to.contains(dataCountries.germany.name);
     });
 
@@ -186,13 +186,13 @@ describe('BO - International - Countries : Filter and quick edit', async () => {
       it(`should ${status.args.status} the first country`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${status.args.status}Zone`, baseContext);
 
-        await countriesPage.setCountryStatus(
+        await boCountriesPage.setCountryStatus(
           page,
           1,
           status.args.enable,
         );
 
-        const currentStatus = await countriesPage.getCountryStatus(page, 1);
+        const currentStatus = await boCountriesPage.getCountryStatus(page, 1);
         expect(currentStatus).to.be.equal(status.args.enable);
       });
     });
@@ -200,7 +200,7 @@ describe('BO - International - Countries : Filter and quick edit', async () => {
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetAfterQuickEdit', baseContext);
 
-      const numberOfCountriesAfterReset = await countriesPage.resetAndGetNumberOfLines(page);
+      const numberOfCountriesAfterReset = await boCountriesPage.resetAndGetNumberOfLines(page);
       expect(numberOfCountriesAfterReset).to.equal(numberOfCountries);
     });
   });

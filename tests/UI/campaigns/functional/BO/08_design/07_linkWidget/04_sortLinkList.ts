@@ -1,20 +1,16 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import basicHelper from '@utils/basicHelper';
-
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import linkWidgetsPage from '@pages/BO/design/linkWidgets';
-
-// Import data
-import Hooks from '@data/demo/hooks';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  boDashboardPage,
+  boDesignLinkListPage,
+  boLoginPage,
+  type BrowserContext,
+  dataHooks,
+  type Page,
+  utilsCore,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_design_linkWidget_sortLinkList';
 
@@ -24,30 +20,36 @@ describe('BO - Design - Link Widget : Sort link list', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   it('should go to \'Design > Link Widget\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToLinkWidgetPage', baseContext);
 
-    await dashboardPage.goToSubMenu(
+    await boDashboardPage.goToSubMenu(
       page,
-      dashboardPage.designParentLink,
-      dashboardPage.linkWidgetLink,
+      boDashboardPage.designParentLink,
+      boDashboardPage.linkWidgetLink,
     );
-    await linkWidgetsPage.closeSfToolBar(page);
+    await boDesignLinkListPage.closeSfToolBar(page);
 
-    const pageTitle = await linkWidgetsPage.getPageTitle(page);
-    expect(pageTitle).to.contains(linkWidgetsPage.pageTitle);
+    const pageTitle = await boDesignLinkListPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDesignLinkListPage.pageTitle);
   });
 
   describe('Sort link list table', async () => {
@@ -87,25 +89,25 @@ describe('BO - Design - Link Widget : Sort link list', async () => {
       it(`should sort by '${test.args.sortBy}' '${test.args.sortDirection}' and check result`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', test.args.testIdentifier, baseContext);
 
-        const nonSortedTable = await linkWidgetsPage.getAllRowsColumnContent(page,
+        const nonSortedTable = await boDesignLinkListPage.getAllRowsColumnContent(page,
           test.args.sortBy,
           test.args.sortBy,
-          Hooks.displayFooter.name,
+          dataHooks.displayFooter.name,
         );
 
-        await linkWidgetsPage.sortLinkWidget(page, test.args.sortBy, test.args.sortDirection, Hooks.displayFooter.name);
+        await boDesignLinkListPage.sortLinkWidget(page, test.args.sortBy, test.args.sortDirection, dataHooks.displayFooter.name);
 
-        const sortedTable = await linkWidgetsPage.getAllRowsColumnContent(page,
+        const sortedTable = await boDesignLinkListPage.getAllRowsColumnContent(page,
           test.args.sortBy,
           test.args.sortBy,
-          Hooks.displayFooter.name,
+          dataHooks.displayFooter.name,
         );
 
         if (test.args.isFloat) {
           const nonSortedTableFloat: number[] = nonSortedTable.map((text: string): number => parseFloat(text));
           const sortedTableFloat: number[] = sortedTable.map((text: string): number => parseFloat(text));
 
-          const expectedResult = await basicHelper.sortArrayNumber(nonSortedTableFloat);
+          const expectedResult = await utilsCore.sortArrayNumber(nonSortedTableFloat);
 
           if (test.args.sortDirection === 'asc') {
             expect(sortedTableFloat).to.deep.equal(expectedResult);
@@ -113,7 +115,7 @@ describe('BO - Design - Link Widget : Sort link list', async () => {
             expect(sortedTableFloat).to.deep.equal(expectedResult.reverse());
           }
         } else {
-          const expectedResult = await basicHelper.sortArray(nonSortedTable);
+          const expectedResult = await utilsCore.sortArray(nonSortedTable);
 
           if (test.args.sortDirection === 'asc') {
             expect(sortedTable).to.deep.equal(expectedResult);

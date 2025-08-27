@@ -1,38 +1,32 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import xml from '@utils/xml';
-
-// Import webservices
 import productXml from '@webservices/product/productXml';
 import ProductWS from '@webservices/product/productWs';
-
-// Import commonTests
 import {addWebserviceKey, removeWebserviceKey, setWebserviceStatus} from '@commonTests/BO/advancedParameters/ws';
 import {enableEcoTaxTest, disableEcoTaxTest} from '@commonTests/BO/international/ecoTax';
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import BO pages
-import webservicePage from '@pages/BO/advancedParameters/webservice';
-import dashboardPage from '@pages/BO/dashboard';
-import productsPage from '@pages/BO/catalog/products';
-import createProductsPage from '@pages/BO/catalog/products/add';
-import descriptionTab from '@pages/BO/catalog/products/add/descriptionTab';
-import detailsTab from '@pages/BO/catalog/products/add/detailsTab';
-import optionsTab from '@pages/BO/catalog/products/add/optionsTab';
-import pricingTab from '@pages/BO/catalog/products/add/pricingTab';
-import seoTab from '@pages/BO/catalog/products/add/seoTab';
-import shippingTab from '@pages/BO/catalog/products/add/shippingTab';
-import stocksTab from '@pages/BO/catalog/products/add/stocksTab';
-
-// Import data
-import {WebservicePermission} from '@data/types/webservice';
 import getProductXml from '@data/xml/product';
-
 import {expect} from 'chai';
-import type {
-  APIResponse, APIRequestContext, BrowserContext, Page,
-} from 'playwright';
+
+import {
+  type APIRequestContext,
+  type APIResponse,
+  boDashboardPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  boProductsCreateTabDescriptionPage,
+  boProductsCreateTabDetailsPage,
+  boProductsCreateTabOptionsPage,
+  boProductsCreateTabPricingPage,
+  boProductsCreateTabSEOPage,
+  boProductsCreateTabShippingPage,
+  boProductsCreateTabStocksPage,
+  boWebservicesPage,
+  type BrowserContext,
+  type Page,
+  utilsPlaywright,
+  utilsXML,
+  type WebservicePermission,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_WS_productsCRUD';
 
@@ -55,14 +49,14 @@ describe('WS - Products : CRUD', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
-    apiContext = await helper.createAPIContext(global.FO.URL);
+    apiContext = await utilsPlaywright.createAPIContext(global.FO.URL);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   // Enable webservice
@@ -78,38 +72,44 @@ describe('WS - Products : CRUD', async () => {
     let productNodeID: number;
     describe('Fetch the Webservice Key', () => {
       it('should login in BO', async function () {
-        await loginCommon.loginBO(this, page);
+        await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+        await boLoginPage.goTo(page, global.BO.URL);
+        await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boDashboardPage.pageTitle);
       });
 
       it('should go to \'Advanced Parameters > Webservice\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToWebservicePage', baseContext);
 
-        await dashboardPage.goToSubMenu(
+        await boDashboardPage.goToSubMenu(
           page,
-          dashboardPage.advancedParametersLink,
-          dashboardPage.webserviceLink,
+          boDashboardPage.advancedParametersLink,
+          boDashboardPage.webserviceLink,
         );
-        await webservicePage.closeSfToolBar(page);
+        await boWebservicesPage.closeSfToolBar(page);
 
-        const pageTitle = await webservicePage.getPageTitle(page);
-        expect(pageTitle).to.contains(webservicePage.pageTitle);
+        const pageTitle = await boWebservicesPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boWebservicesPage.pageTitle);
       });
 
       it('should filter list by key description', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'filterBeforeDelete', baseContext);
 
-        await webservicePage.resetAndGetNumberOfLines(page);
-        await webservicePage.filterWebserviceTable(
+        await boWebservicesPage.resetAndGetNumberOfLines(page);
+        await boWebservicesPage.filterWebserviceTable(
           page,
           'input',
           'description',
           wsKeyDescription,
         );
 
-        const description = await webservicePage.getTextColumnFromTable(page, 1, 'description');
+        const description = await boWebservicesPage.getTextColumnFromTable(page, 1, 'description');
         expect(description).to.contains(wsKeyDescription);
 
-        wsKey = await webservicePage.getTextColumnFromTable(page, 1, 'key');
+        wsKey = await boWebservicesPage.getTextColumnFromTable(page, 1, 'key');
         authorization = `Basic ${Buffer.from(`${wsKey}:`).toString('base64')}`;
         expect(wsKey).to.not.have.length(0);
       });
@@ -134,7 +134,7 @@ describe('WS - Products : CRUD', async () => {
 
         xmlResponse = await apiResponse.text();
 
-        const isValidXML = xml.isValid(xmlResponse);
+        const isValidXML = utilsXML.isValid(xmlResponse);
         expect(isValidXML).to.eq(true);
       });
 
@@ -166,7 +166,7 @@ describe('WS - Products : CRUD', async () => {
           expect(nodeAttributes.length).to.eq(0);
 
           // Empty value
-          const isEmptyNode: boolean = xml.isEmpty(node);
+          const isEmptyNode: boolean = utilsXML.isEmpty(node);
           expect(isEmptyNode, `The node ${node.nodeName} is not empty`).to.eq(true);
         }
       });
@@ -191,7 +191,7 @@ describe('WS - Products : CRUD', async () => {
 
         xmlResponse = await apiResponse.text();
 
-        const isValidXML = xml.isValid(xmlResponse);
+        const isValidXML = utilsXML.isValid(xmlResponse);
         expect(isValidXML).to.eq(true);
       });
 
@@ -242,7 +242,7 @@ describe('WS - Products : CRUD', async () => {
           }
 
           // Empty value
-          const isEmptyNode = xml.isEmpty(node);
+          const isEmptyNode = utilsXML.isEmpty(node);
           expect(isEmptyNode, `The node ${node.nodeName} is not empty`).to.eq(true);
         }
       });
@@ -406,7 +406,6 @@ describe('WS - Products : CRUD', async () => {
               'delivery_in_stock',
               'delivery_out_stock',
               'meta_description',
-              'meta_keywords',
               'meta_title',
               'link_rewrite',
               'description',
@@ -461,23 +460,23 @@ describe('WS - Products : CRUD', async () => {
           it('should go to \'Catalog > Products\' page', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPageAfterPost', baseContext);
 
-            await dashboardPage.goToSubMenu(
+            await boDashboardPage.goToSubMenu(
               page,
-              dashboardPage.catalogParentLink,
-              dashboardPage.productsLink,
+              boDashboardPage.catalogParentLink,
+              boDashboardPage.productsLink,
             );
-            await productsPage.closeSfToolBar(page);
+            await boProductsPage.closeSfToolBar(page);
 
-            const pageTitle = await productsPage.getPageTitle(page);
-            expect(pageTitle).to.contains(productsPage.pageTitle);
+            const pageTitle = await boProductsPage.getPageTitle(page);
+            expect(pageTitle).to.contains(boProductsPage.pageTitle);
           });
 
           it('should filter product by ID', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'filterToUpdateAfterPost', baseContext);
 
             // Filter
-            await productsPage.resetFilter(page);
-            await productsPage.filterProducts(
+            await boProductsPage.resetFilter(page);
+            await boProductsPage.filterProducts(
               page,
               'id_product',
               {min: productNodeID, max: productNodeID},
@@ -485,20 +484,20 @@ describe('WS - Products : CRUD', async () => {
             );
 
             // Check number of Products
-            const numberOfProductsAfterFilter = await productsPage.getNumberOfProductsFromList(page);
+            const numberOfProductsAfterFilter = await boProductsPage.getNumberOfProductsFromList(page);
             expect(numberOfProductsAfterFilter).to.eq(1);
 
-            const textColumn = await productsPage.getTextColumn(page, 'id_product', 1);
+            const textColumn = await boProductsPage.getTextColumn(page, 'id_product', 1);
             expect(textColumn).to.eq(productNodeID);
           });
 
           it('should go to edit product page', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'goToEditProductPageAfterPost', baseContext);
 
-            await productsPage.goToProductPage(page, 1);
+            await boProductsPage.goToProductPage(page, 1);
 
-            const pageTitle: string = await createProductsPage.getPageTitle(page);
-            expect(pageTitle).to.contains(createProductsPage.pageTitle);
+            const pageTitle: string = await boProductsCreatePage.getPageTitle(page);
+            expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
           });
         });
 
@@ -507,7 +506,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckProductActive', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'active');
-            const value = (await createProductsPage.getProductStatus(page)) ? '1' : '0';
+            const value = (await boProductsCreatePage.getProductStatus(page)) ? '1' : '0';
             expect(value).to.eq(xmlValue);
           });
 
@@ -515,7 +514,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckProductType', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'product_type');
-            const value = (await createProductsPage.getProductType(page));
+            const value = (await boProductsCreatePage.getProductType(page));
             expect(value).to.eq(xmlValue);
           });
 
@@ -523,11 +522,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckName', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'name', '1');
-            const valueEn = (await createProductsPage.getProductName(page, 'en'));
+            const valueEn = (await boProductsCreatePage.getProductName(page, 'en'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'name', '2');
-            const valueFr = (await createProductsPage.getProductName(page, 'fr'));
+            const valueFr = (await boProductsCreatePage.getProductName(page, 'fr'));
             expect(valueFr).to.eq(xmlValueFr);
           });
         });
@@ -537,11 +536,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckShortDescription', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'description_short', '1');
-            const valueEn = (await descriptionTab.getValue(page, 'summary', '1'));
+            const valueEn = (await boProductsCreateTabDescriptionPage.getValue(page, 'summary', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'description_short', '2');
-            const valueFr = (await descriptionTab.getValue(page, 'summary', '2'));
+            const valueFr = (await boProductsCreateTabDescriptionPage.getValue(page, 'summary', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -549,11 +548,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckDescription', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'description', '1');
-            const valueEn = (await descriptionTab.getValue(page, 'description', '1'));
+            const valueEn = (await boProductsCreateTabDescriptionPage.getValue(page, 'description', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'description', '2');
-            const valueFr = (await descriptionTab.getValue(page, 'description', '2'));
+            const valueFr = (await boProductsCreateTabDescriptionPage.getValue(page, 'description', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -561,7 +560,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckDefaultCategory', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'id_category_default');
-            const value = (await descriptionTab.getValue(page, 'id_category_default', '1'));
+            const value = (await boProductsCreateTabDescriptionPage.getValue(page, 'id_category_default', '1'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -569,7 +568,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckManufacturer', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'id_manufacturer');
-            const value = (await descriptionTab.getValue(page, 'manufacturer', '1'));
+            const value = (await boProductsCreateTabDescriptionPage.getValue(page, 'manufacturer', '1'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -578,9 +577,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to details tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'postGoToDetailsTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'details');
+            await boProductsCreatePage.goToTab(page, 'details');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'details');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'details');
             expect(isTabActive).to.eq(true);
           });
 
@@ -588,7 +587,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckReference', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'reference');
-            const value = (await detailsTab.getValue(page, 'reference'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'reference'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -596,7 +595,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckMPN', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'mpn');
-            const value = (await detailsTab.getValue(page, 'mpn'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'mpn'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -604,7 +603,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckUPC', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'upc');
-            const value = (await detailsTab.getValue(page, 'upc'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'upc'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -612,7 +611,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckEAN13', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'ean13');
-            const value = (await detailsTab.getValue(page, 'ean13'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'ean13'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -620,7 +619,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckISBN', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'isbn');
-            const value = (await detailsTab.getValue(page, 'isbn'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'isbn'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -628,7 +627,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckShowCondition', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'show_condition');
-            const value = (await detailsTab.getValue(page, 'show_condition'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'show_condition'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -636,7 +635,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckCondition', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'condition');
-            const value = (await detailsTab.getValue(page, 'condition'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'condition'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -645,9 +644,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to Stocks tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'postGoToStocksTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'stock');
+            await boProductsCreatePage.goToTab(page, 'stock');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'stock');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'stock');
             expect(isTabActive).to.eq(true);
           });
 
@@ -655,7 +654,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckMinimalQuantity', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'minimal_quantity');
-            const value = (await stocksTab.getValue(page, 'minimal_quantity'));
+            const value = (await boProductsCreateTabStocksPage.getValue(page, 'minimal_quantity'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -666,7 +665,7 @@ describe('WS - Products : CRUD', async () => {
             this.skip();
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'low_stock_alert');
-            const value = (await stocksTab.getValue(page, 'low_stock_threshold_enabled'));
+            const value = (await boProductsCreateTabStocksPage.getValue(page, 'low_stock_threshold_enabled'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -674,7 +673,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckLowStockThreshold', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'low_stock_threshold');
-            const value = (await stocksTab.getValue(page, 'low_stock_threshold'));
+            const value = (await boProductsCreateTabStocksPage.getValue(page, 'low_stock_threshold'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -682,11 +681,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckLabelAvailableNow', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'available_now', '1');
-            const valueEn = (await stocksTab.getValue(page, 'available_now', '1'));
+            const valueEn = (await boProductsCreateTabStocksPage.getValue(page, 'available_now', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'available_now', '2');
-            const valueFr = (await stocksTab.getValue(page, 'available_now', '2'));
+            const valueFr = (await boProductsCreateTabStocksPage.getValue(page, 'available_now', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -694,11 +693,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckLabelAvailableLater', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'available_later', '1');
-            const valueEn = (await stocksTab.getValue(page, 'available_later', '1'));
+            const valueEn = (await boProductsCreateTabStocksPage.getValue(page, 'available_later', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'available_later', '2');
-            const valueFr = (await stocksTab.getValue(page, 'available_later', '2'));
+            const valueFr = (await boProductsCreateTabStocksPage.getValue(page, 'available_later', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -706,7 +705,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckAvailableDate', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'available_date');
-            const value = (await stocksTab.getValue(page, 'available_date'));
+            const value = (await boProductsCreateTabStocksPage.getValue(page, 'available_date'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -715,9 +714,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to Shipping tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'postGoToShippingTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'shipping');
+            await boProductsCreatePage.goToTab(page, 'shipping');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'shipping');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'shipping');
             expect(isTabActive).to.eq(true);
           });
 
@@ -725,7 +724,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckWidth', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'width');
-            const value = (await shippingTab.getValue(page, 'width'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'width'));
             expect(xmlValue).to.be.a('string');
             expect(value).to.eq(parseInt(xmlValue as string, 10).toString());
           });
@@ -734,7 +733,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckHeight', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'height');
-            const value = (await shippingTab.getValue(page, 'height'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'height'));
             expect(xmlValue).to.be.a('string');
             expect(value).to.eq(parseInt(xmlValue as string, 10).toString());
           });
@@ -743,7 +742,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckDepth', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'depth');
-            const value = (await shippingTab.getValue(page, 'depth'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'depth'));
             expect(xmlValue).to.be.a('string');
             expect(value).to.eq(parseInt(xmlValue as string, 10).toString());
           });
@@ -752,7 +751,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckWeight', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'weight');
-            const value = (await shippingTab.getValue(page, 'weight'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'weight'));
             expect(xmlValue).to.be.a('string');
             expect(value).to.eq(parseInt(xmlValue as string, 10).toString());
           });
@@ -761,7 +760,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckDeliveryTime', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'additional_delivery_times');
-            const value = (await shippingTab.getValue(page, 'additional_delivery_times'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'additional_delivery_times'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -769,11 +768,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckDeliveryInStock', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'delivery_in_stock', '1');
-            const valueEn = (await shippingTab.getValue(page, 'delivery_in_stock', '1'));
+            const valueEn = (await boProductsCreateTabShippingPage.getValue(page, 'delivery_in_stock', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'delivery_in_stock', '2');
-            const valueFr = (await shippingTab.getValue(page, 'delivery_in_stock', '2'));
+            const valueFr = (await boProductsCreateTabShippingPage.getValue(page, 'delivery_in_stock', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -781,11 +780,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckDeliveryOutStock', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'delivery_out_stock', '1');
-            const valueEn = (await shippingTab.getValue(page, 'delivery_out_stock', '1'));
+            const valueEn = (await boProductsCreateTabShippingPage.getValue(page, 'delivery_out_stock', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'delivery_out_stock', '2');
-            const valueFr = (await shippingTab.getValue(page, 'delivery_out_stock', '2'));
+            const valueFr = (await boProductsCreateTabShippingPage.getValue(page, 'delivery_out_stock', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -793,7 +792,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckShippingCost', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'additional_shipping_cost');
-            const value = (await shippingTab.getValue(page, 'additional_shipping_cost'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'additional_shipping_cost'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -802,9 +801,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to Pricing tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'postGoToPricingTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'pricing');
+            await boProductsCreatePage.goToTab(page, 'pricing');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'pricing');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'pricing');
             expect(isTabActive).to.eq(true);
           });
 
@@ -812,7 +811,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckPrice', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'price');
-            const value = (await pricingTab.getValue(page, 'price'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'price'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -820,7 +819,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckTaxRule', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'id_tax_rules_group');
-            const value = (await pricingTab.getValue(page, 'id_tax_rules_group'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'id_tax_rules_group'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -828,7 +827,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckEcotax', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'ecotax');
-            const value = (await pricingTab.getValue(page, 'ecotax'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'ecotax'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -836,7 +835,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckWholesalePrice', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'wholesale_price');
-            const value = (await pricingTab.getValue(page, 'wholesale_price'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'wholesale_price'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -844,7 +843,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckUnitPrice', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'unit_price');
-            const value = (await pricingTab.getValue(page, 'unit_price'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'unit_price'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -852,7 +851,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckUnity', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'unity');
-            const value = (await pricingTab.getValue(page, 'unity'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'unity'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -860,7 +859,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckOnSale', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'on_sale');
-            const value = (await pricingTab.getValue(page, 'on_sale'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'on_sale'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -869,9 +868,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to SEO tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'postGoToSEOTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'seo');
+            await boProductsCreatePage.goToTab(page, 'seo');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'seo');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'seo');
             expect(isTabActive).to.eq(true);
           });
 
@@ -879,11 +878,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckMetaTitle', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'meta_title', '1');
-            const valueEn = (await seoTab.getValue(page, 'meta_title', '1'));
+            const valueEn = (await boProductsCreateTabSEOPage.getValue(page, 'meta_title', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'meta_title', '2');
-            const valueFr = (await seoTab.getValue(page, 'meta_title', '2'));
+            const valueFr = (await boProductsCreateTabSEOPage.getValue(page, 'meta_title', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -891,11 +890,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckMetaDescription', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'meta_description', '1');
-            const valueEn = (await seoTab.getValue(page, 'meta_description', '1'));
+            const valueEn = (await boProductsCreateTabSEOPage.getValue(page, 'meta_description', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'meta_description', '2');
-            const valueFr = (await seoTab.getValue(page, 'meta_description', '2'));
+            const valueFr = (await boProductsCreateTabSEOPage.getValue(page, 'meta_description', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -903,11 +902,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckLinkRewrite', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlCreate, 'link_rewrite', '1');
-            const valueEn = (await seoTab.getValue(page, 'link_rewrite', '1'));
+            const valueEn = (await boProductsCreateTabSEOPage.getValue(page, 'link_rewrite', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlCreate, 'link_rewrite', '2');
-            const valueFr = (await seoTab.getValue(page, 'link_rewrite', '2'));
+            const valueFr = (await boProductsCreateTabSEOPage.getValue(page, 'link_rewrite', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -915,7 +914,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckRedirectType', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'redirect_type');
-            const value = (await seoTab.getValue(page, 'redirect_type', '1'));
+            const value = (await boProductsCreateTabSEOPage.getValue(page, 'redirect_type', '1'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -923,7 +922,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckIdTypeRedirected', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'id_type_redirected');
-            const value = (await seoTab.getValue(page, 'id_type_redirected', '1'));
+            const value = (await boProductsCreateTabSEOPage.getValue(page, 'id_type_redirected', '1'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -932,9 +931,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to Options tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'postGoToOptionsTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'options');
+            await boProductsCreatePage.goToTab(page, 'options');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'options');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'options');
             expect(isTabActive).to.eq(true);
           });
 
@@ -942,7 +941,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckVisibility', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'visibility');
-            const value = (await optionsTab.getValue(page, 'visibility'));
+            const value = (await boProductsCreateTabOptionsPage.getValue(page, 'visibility'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -950,7 +949,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckAvailableForOrder', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'available_for_order');
-            const value = (await optionsTab.getValue(page, 'available_for_order'));
+            const value = (await boProductsCreateTabOptionsPage.getValue(page, 'available_for_order'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -958,7 +957,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckShowPrice', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'show_price');
-            const value = (await optionsTab.getValue(page, 'show_price'));
+            const value = (await boProductsCreateTabOptionsPage.getValue(page, 'show_price'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -966,7 +965,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'postCheckOnlineOnly', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlCreate, 'online_only');
-            const value = (await optionsTab.getValue(page, 'online_only'));
+            const value = (await boProductsCreateTabOptionsPage.getValue(page, 'online_only'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -975,21 +974,21 @@ describe('WS - Products : CRUD', async () => {
           it('should go to \'Catalog > Products\' page', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPageBeforePut', baseContext);
 
-            await dashboardPage.goToSubMenu(
+            await boDashboardPage.goToSubMenu(
               page,
-              dashboardPage.catalogParentLink,
-              dashboardPage.productsLink,
+              boDashboardPage.catalogParentLink,
+              boDashboardPage.productsLink,
             );
-            await productsPage.closeSfToolBar(page);
+            await boProductsPage.closeSfToolBar(page);
 
-            const pageTitle = await productsPage.getPageTitle(page);
-            expect(pageTitle).to.contains(productsPage.pageTitle);
+            const pageTitle = await boProductsPage.getPageTitle(page);
+            expect(pageTitle).to.contains(boProductsPage.pageTitle);
           });
 
           it('should reset all filters', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirstAfterPost', baseContext);
 
-            const numberOfProducts = await productsPage.resetAndGetNumberOfLines(page);
+            const numberOfProducts = await boProductsPage.resetAndGetNumberOfLines(page);
             expect(numberOfProducts).to.be.above(0);
           });
         });
@@ -1095,7 +1094,6 @@ describe('WS - Products : CRUD', async () => {
               'delivery_in_stock',
               'delivery_out_stock',
               'meta_description',
-              'meta_keywords',
               'meta_title',
               'link_rewrite',
               'description',
@@ -1151,7 +1149,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'filterToUpdateAfterPut', baseContext);
 
             // Filter
-            await productsPage.filterProducts(
+            await boProductsPage.filterProducts(
               page,
               'id_product',
               {min: productNodeID, max: productNodeID},
@@ -1159,20 +1157,20 @@ describe('WS - Products : CRUD', async () => {
             );
 
             // Check number of Products
-            const numberOfProductsAfterFilter = await productsPage.getNumberOfProductsFromList(page);
+            const numberOfProductsAfterFilter = await boProductsPage.getNumberOfProductsFromList(page);
             expect(numberOfProductsAfterFilter).to.eq(1);
 
-            const textColumn = await productsPage.getTextColumn(page, 'id_product', 1);
+            const textColumn = await boProductsPage.getTextColumn(page, 'id_product', 1);
             expect(textColumn).to.eq(productNodeID);
           });
 
           it('should go to edit product page', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'goToEditProductPageAfterPut', baseContext);
 
-            await productsPage.goToProductPage(page, 1);
+            await boProductsPage.goToProductPage(page, 1);
 
-            const pageTitle: string = await createProductsPage.getPageTitle(page);
-            expect(pageTitle).to.contains(createProductsPage.pageTitle);
+            const pageTitle: string = await boProductsCreatePage.getPageTitle(page);
+            expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
           });
         });
 
@@ -1181,7 +1179,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckProductActive', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'active');
-            const value = (await createProductsPage.getProductStatus(page)) ? '1' : '0';
+            const value = (await boProductsCreatePage.getProductStatus(page)) ? '1' : '0';
             expect(value).to.eq(xmlValue);
           });
 
@@ -1189,7 +1187,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckProductType', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'product_type');
-            const value = (await createProductsPage.getProductType(page));
+            const value = (await boProductsCreatePage.getProductType(page));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1197,11 +1195,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckName', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'name', '1');
-            const valueEn = (await createProductsPage.getProductName(page, 'en'));
+            const valueEn = (await boProductsCreatePage.getProductName(page, 'en'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'name', '2');
-            const valueFr = (await createProductsPage.getProductName(page, 'fr'));
+            const valueFr = (await boProductsCreatePage.getProductName(page, 'fr'));
             expect(valueFr).to.eq(xmlValueFr);
           });
         });
@@ -1211,11 +1209,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckShortDescription', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'description_short', '1');
-            const valueEn = (await descriptionTab.getValue(page, 'summary', '1'));
+            const valueEn = (await boProductsCreateTabDescriptionPage.getValue(page, 'summary', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'description_short', '2');
-            const valueFr = (await descriptionTab.getValue(page, 'summary', '2'));
+            const valueFr = (await boProductsCreateTabDescriptionPage.getValue(page, 'summary', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1223,11 +1221,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckDescription', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'description', '1');
-            const valueEn = (await descriptionTab.getValue(page, 'description', '1'));
+            const valueEn = (await boProductsCreateTabDescriptionPage.getValue(page, 'description', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'description', '2');
-            const valueFr = (await descriptionTab.getValue(page, 'description', '2'));
+            const valueFr = (await boProductsCreateTabDescriptionPage.getValue(page, 'description', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1235,7 +1233,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckDefaultCategory', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'id_category_default');
-            const value = (await descriptionTab.getValue(page, 'id_category_default', '1'));
+            const value = (await boProductsCreateTabDescriptionPage.getValue(page, 'id_category_default', '1'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1243,7 +1241,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckManufacturer', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'id_manufacturer');
-            const value = (await descriptionTab.getValue(page, 'manufacturer', '1'));
+            const value = (await boProductsCreateTabDescriptionPage.getValue(page, 'manufacturer', '1'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -1252,9 +1250,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to details tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'putGoToDetailsTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'details');
+            await boProductsCreatePage.goToTab(page, 'details');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'details');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'details');
             expect(isTabActive).to.eq(true);
           });
 
@@ -1262,7 +1260,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckReference', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'reference');
-            const value = (await detailsTab.getValue(page, 'reference'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'reference'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1270,7 +1268,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckMPN', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'mpn');
-            const value = (await detailsTab.getValue(page, 'mpn'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'mpn'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1278,7 +1276,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckUPC', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'upc');
-            const value = (await detailsTab.getValue(page, 'upc'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'upc'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1286,7 +1284,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckEAN13', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'ean13');
-            const value = (await detailsTab.getValue(page, 'ean13'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'ean13'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1294,7 +1292,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckISBN', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'isbn');
-            const value = (await detailsTab.getValue(page, 'isbn'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'isbn'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1302,7 +1300,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckShowCondition', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'show_condition');
-            const value = (await detailsTab.getValue(page, 'show_condition'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'show_condition'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1310,7 +1308,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckCondition', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'condition');
-            const value = (await detailsTab.getValue(page, 'condition'));
+            const value = (await boProductsCreateTabDetailsPage.getValue(page, 'condition'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -1319,9 +1317,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to Stocks tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'putGoToStocksTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'stock');
+            await boProductsCreatePage.goToTab(page, 'stock');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'stock');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'stock');
             expect(isTabActive).to.eq(true);
           });
 
@@ -1329,7 +1327,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckMinimalQuantity', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'minimal_quantity');
-            const value = (await stocksTab.getValue(page, 'minimal_quantity'));
+            const value = (await boProductsCreateTabStocksPage.getValue(page, 'minimal_quantity'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1340,7 +1338,7 @@ describe('WS - Products : CRUD', async () => {
             this.skip();
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'low_stock_alert');
-            const value = (await stocksTab.getValue(page, 'low_stock_threshold_enabled'));
+            const value = (await boProductsCreateTabStocksPage.getValue(page, 'low_stock_threshold_enabled'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1348,7 +1346,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckLowStockThreshold', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'low_stock_threshold');
-            const value = (await stocksTab.getValue(page, 'low_stock_threshold'));
+            const value = (await boProductsCreateTabStocksPage.getValue(page, 'low_stock_threshold'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1356,11 +1354,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckLabelAvailableNow', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'available_now', '1');
-            const valueEn = (await stocksTab.getValue(page, 'available_now', '1'));
+            const valueEn = (await boProductsCreateTabStocksPage.getValue(page, 'available_now', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'available_now', '2');
-            const valueFr = (await stocksTab.getValue(page, 'available_now', '2'));
+            const valueFr = (await boProductsCreateTabStocksPage.getValue(page, 'available_now', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1368,11 +1366,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckLabelAvailableLater', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'available_later', '1');
-            const valueEn = (await stocksTab.getValue(page, 'available_later', '1'));
+            const valueEn = (await boProductsCreateTabStocksPage.getValue(page, 'available_later', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'available_later', '2');
-            const valueFr = (await stocksTab.getValue(page, 'available_later', '2'));
+            const valueFr = (await boProductsCreateTabStocksPage.getValue(page, 'available_later', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1380,7 +1378,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckAvailableDate', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'available_date');
-            const value = (await stocksTab.getValue(page, 'available_date'));
+            const value = (await boProductsCreateTabStocksPage.getValue(page, 'available_date'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -1389,9 +1387,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to Shipping tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'putGoToShippingTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'shipping');
+            await boProductsCreatePage.goToTab(page, 'shipping');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'shipping');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'shipping');
             expect(isTabActive).to.eq(true);
           });
 
@@ -1399,7 +1397,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckWidth', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'width');
-            const value = (await shippingTab.getValue(page, 'width'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'width'));
             expect(xmlValue).to.be.a('string');
             expect(value).to.eq(parseInt(xmlValue as string, 10).toString());
           });
@@ -1408,7 +1406,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckHeight', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'height');
-            const value = (await shippingTab.getValue(page, 'height'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'height'));
             expect(xmlValue).to.be.a('string');
             expect(value).to.eq(parseInt(xmlValue as string, 10).toString());
           });
@@ -1417,7 +1415,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckDepth', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'depth');
-            const value = (await shippingTab.getValue(page, 'depth'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'depth'));
             expect(xmlValue).to.be.a('string');
             expect(value).to.eq(parseInt(xmlValue as string, 10).toString());
           });
@@ -1426,7 +1424,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckWeight', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'weight');
-            const value = (await shippingTab.getValue(page, 'weight'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'weight'));
             expect(xmlValue).to.be.a('string');
             expect(value).to.eq(parseInt(xmlValue as string, 10).toString());
           });
@@ -1435,7 +1433,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckDeliveryTime', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'additional_delivery_times');
-            const value = (await shippingTab.getValue(page, 'additional_delivery_times'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'additional_delivery_times'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1443,11 +1441,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckDeliveryInStock', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'delivery_in_stock', '1');
-            const valueEn = (await shippingTab.getValue(page, 'delivery_in_stock', '1'));
+            const valueEn = (await boProductsCreateTabShippingPage.getValue(page, 'delivery_in_stock', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'delivery_in_stock', '2');
-            const valueFr = (await shippingTab.getValue(page, 'delivery_in_stock', '2'));
+            const valueFr = (await boProductsCreateTabShippingPage.getValue(page, 'delivery_in_stock', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1455,11 +1453,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckDeliveryOutStock', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'delivery_out_stock', '1');
-            const valueEn = (await shippingTab.getValue(page, 'delivery_out_stock', '1'));
+            const valueEn = (await boProductsCreateTabShippingPage.getValue(page, 'delivery_out_stock', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'delivery_out_stock', '2');
-            const valueFr = (await shippingTab.getValue(page, 'delivery_out_stock', '2'));
+            const valueFr = (await boProductsCreateTabShippingPage.getValue(page, 'delivery_out_stock', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1467,7 +1465,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckShippingCost', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'additional_shipping_cost');
-            const value = (await shippingTab.getValue(page, 'additional_shipping_cost'));
+            const value = (await boProductsCreateTabShippingPage.getValue(page, 'additional_shipping_cost'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -1476,9 +1474,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to Pricing tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'putGoToPricingTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'pricing');
+            await boProductsCreatePage.goToTab(page, 'pricing');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'pricing');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'pricing');
             expect(isTabActive).to.eq(true);
           });
 
@@ -1486,7 +1484,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckPrice', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'price');
-            const value = (await pricingTab.getValue(page, 'price'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'price'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1494,7 +1492,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckTaxRule', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'id_tax_rules_group');
-            const value = (await pricingTab.getValue(page, 'id_tax_rules_group'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'id_tax_rules_group'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1502,7 +1500,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckEcotax', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'ecotax');
-            const value = (await pricingTab.getValue(page, 'ecotax'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'ecotax'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1510,7 +1508,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckWholesalePrice', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'wholesale_price');
-            const value = (await pricingTab.getValue(page, 'wholesale_price'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'wholesale_price'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1518,7 +1516,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckUnitPrice', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'unit_price');
-            const value = (await pricingTab.getValue(page, 'unit_price'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'unit_price'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1526,7 +1524,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckUnity', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'unity');
-            const value = (await pricingTab.getValue(page, 'unity'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'unity'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1534,7 +1532,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckOnSale', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'on_sale');
-            const value = (await pricingTab.getValue(page, 'on_sale'));
+            const value = (await boProductsCreateTabPricingPage.getValue(page, 'on_sale'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -1543,9 +1541,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to SEO tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'putGoToSEOTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'seo');
+            await boProductsCreatePage.goToTab(page, 'seo');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'seo');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'seo');
             expect(isTabActive).to.eq(true);
           });
 
@@ -1553,11 +1551,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckMetaTitle', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'meta_title', '1');
-            const valueEn = (await seoTab.getValue(page, 'meta_title', '1'));
+            const valueEn = (await boProductsCreateTabSEOPage.getValue(page, 'meta_title', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'meta_title', '2');
-            const valueFr = (await seoTab.getValue(page, 'meta_title', '2'));
+            const valueFr = (await boProductsCreateTabSEOPage.getValue(page, 'meta_title', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1565,11 +1563,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckMetaDescription', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'meta_description', '1');
-            const valueEn = (await seoTab.getValue(page, 'meta_description', '1'));
+            const valueEn = (await boProductsCreateTabSEOPage.getValue(page, 'meta_description', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'meta_description', '2');
-            const valueFr = (await seoTab.getValue(page, 'meta_description', '2'));
+            const valueFr = (await boProductsCreateTabSEOPage.getValue(page, 'meta_description', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1577,11 +1575,11 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckLinkRewrite', baseContext);
 
             const xmlValueEn = productXml.getAttributeLangValue(xmlUpdate, 'link_rewrite', '1');
-            const valueEn = (await seoTab.getValue(page, 'link_rewrite', '1'));
+            const valueEn = (await boProductsCreateTabSEOPage.getValue(page, 'link_rewrite', '1'));
             expect(valueEn).to.eq(xmlValueEn);
 
             const xmlValueFr = productXml.getAttributeLangValue(xmlUpdate, 'link_rewrite', '2');
-            const valueFr = (await seoTab.getValue(page, 'link_rewrite', '2'));
+            const valueFr = (await boProductsCreateTabSEOPage.getValue(page, 'link_rewrite', '2'));
             expect(valueFr).to.eq(xmlValueFr);
           });
 
@@ -1589,7 +1587,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckRedirectType', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'redirect_type');
-            const value = (await seoTab.getValue(page, 'redirect_type', '1'));
+            const value = (await boProductsCreateTabSEOPage.getValue(page, 'redirect_type', '1'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1597,7 +1595,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckIdTypeRedirected', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'id_type_redirected');
-            const value = (await seoTab.getValue(page, 'id_type_redirected', '1'));
+            const value = (await boProductsCreateTabSEOPage.getValue(page, 'id_type_redirected', '1'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -1606,9 +1604,9 @@ describe('WS - Products : CRUD', async () => {
           it('should go to Options tab', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'putGoToOptionsTab', baseContext);
 
-            await createProductsPage.goToTab(page, 'options');
+            await boProductsCreatePage.goToTab(page, 'options');
 
-            const isTabActive = await createProductsPage.isTabActive(page, 'options');
+            const isTabActive = await boProductsCreatePage.isTabActive(page, 'options');
             expect(isTabActive).to.eq(true);
           });
 
@@ -1616,7 +1614,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckVisibility', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'visibility');
-            const value = (await optionsTab.getValue(page, 'visibility'));
+            const value = (await boProductsCreateTabOptionsPage.getValue(page, 'visibility'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1624,7 +1622,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckAvailableForOrder', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'available_for_order');
-            const value = (await optionsTab.getValue(page, 'available_for_order'));
+            const value = (await boProductsCreateTabOptionsPage.getValue(page, 'available_for_order'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1632,7 +1630,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckShowPrice', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'show_price');
-            const value = (await optionsTab.getValue(page, 'show_price'));
+            const value = (await boProductsCreateTabOptionsPage.getValue(page, 'show_price'));
             expect(value).to.eq(xmlValue);
           });
 
@@ -1640,7 +1638,7 @@ describe('WS - Products : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'putCheckOnlineOnly', baseContext);
 
             const xmlValue = productXml.getAttributeValue(xmlUpdate, 'online_only');
-            const value = (await optionsTab.getValue(page, 'online_only'));
+            const value = (await boProductsCreateTabOptionsPage.getValue(page, 'online_only'));
             expect(value).to.eq(xmlValue);
           });
         });
@@ -1649,21 +1647,21 @@ describe('WS - Products : CRUD', async () => {
           it('should go to \'Catalog > Products\' page', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPageAfterPut', baseContext);
 
-            await dashboardPage.goToSubMenu(
+            await boDashboardPage.goToSubMenu(
               page,
-              dashboardPage.catalogParentLink,
-              dashboardPage.productsLink,
+              boDashboardPage.catalogParentLink,
+              boDashboardPage.productsLink,
             );
-            await productsPage.closeSfToolBar(page);
+            await boProductsPage.closeSfToolBar(page);
 
-            const pageTitle = await productsPage.getPageTitle(page);
-            expect(pageTitle).to.contains(productsPage.pageTitle);
+            const pageTitle = await boProductsPage.getPageTitle(page);
+            expect(pageTitle).to.contains(boProductsPage.pageTitle);
           });
 
           it('should reset all filters', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirstAfterPut', baseContext);
 
-            const numberOfProducts = await productsPage.resetAndGetNumberOfLines(page);
+            const numberOfProducts = await boProductsPage.resetAndGetNumberOfLines(page);
             expect(numberOfProducts).to.be.above(0);
           });
         });
@@ -1699,7 +1697,7 @@ describe('WS - Products : CRUD', async () => {
         await testContext.addContextItem(this, 'testIdentifier', 'filterToUpdateAfterDelete', baseContext);
 
         // Filter
-        await productsPage.filterProducts(
+        await boProductsPage.filterProducts(
           page,
           'id_product',
           {min: productNodeID, max: productNodeID},
@@ -1707,14 +1705,14 @@ describe('WS - Products : CRUD', async () => {
         );
 
         // Check number of Products
-        const numberOfProductsAfterFilter = await productsPage.getNumberOfProductsFromList(page);
+        const numberOfProductsAfterFilter = await boProductsPage.getNumberOfProductsFromList(page);
         expect(numberOfProductsAfterFilter).to.eq(0);
       });
 
       it('should reset all filters', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirst', baseContext);
 
-        const numberOfProducts = await productsPage.resetAndGetNumberOfLines(page);
+        const numberOfProducts = await boProductsPage.resetAndGetNumberOfLines(page);
         expect(numberOfProducts).to.be.above(0);
       });
     });

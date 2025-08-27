@@ -1,51 +1,45 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import files from '@utils/files';
-
-// import common tests
-import loginCommon from '@commonTests/BO/loginBO';
 import {deleteProductTest} from '@commonTests/BO/catalog/product';
-import {installHummingbird, uninstallHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import attributesPage from '@pages/BO/catalog/attributes';
-import addAttributePage from '@pages/BO/catalog/attributes/addAttribute';
-import viewAttributePage from '@pages/BO/catalog/attributes/view';
-import addValuePage from '@pages/BO/catalog/attributes/addValue';
-import productsPage from '@pages/BO/catalog/products';
-import createProductsPage from '@pages/BO/catalog/products/add';
-import combinationsTab from '@pages/BO/catalog/products/add/combinationsTab';
-
-// Import FO pages
-import homePage from '@pages/FO/hummingbird/home';
-import productPage from '@pages/FO/hummingbird/product';
-import searchResultsPage from '@pages/FO/hummingbird/searchResults';
-
-// Import data
-import AttributeData from '@data/faker/attribute';
-import AttributeValueData from '@data/faker/attributeValue';
-import ProductData from '@data/faker/product';
-import {ProductAttribute} from '@data/types/product';
-
+import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  boAttributesPage,
+  boAttributesCreatePage,
+  boAttributesValueCreatePage,
+  boAttributesViewPage,
+  boDashboardPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  boProductsCreateTabCombinationsPage,
+  type BrowserContext,
+  FakerAttribute,
+  FakerAttributeValue,
+  FakerProduct,
+  foHummingbirdHomePage,
+  foHummingbirdProductPage,
+  foHummingbirdSearchResultsPage,
+  type Page,
+  type ProductAttribute,
+  utilsFile,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_hummingbird_productPage_productPage_changeCombination';
 
 describe('FO - Product page - Product page : Change combination', async () => {
   let browserContext: BrowserContext;
   let page: Page;
-  const createAttributeData: AttributeData = new AttributeData({name: 'Emballage', attributeType: 'Radio buttons'});
-  const valuesToCreate: AttributeValueData[] = [
-    new AttributeValueData({attributeName: 'Emballage', value: 'Soie'}),
-    new AttributeValueData({attributeName: 'Emballage', value: 'Carton'}),
+  const createAttributeData: FakerAttribute = new FakerAttribute({name: 'Emballage', attributeType: 'Radio buttons'});
+  const valuesToCreate: FakerAttributeValue[] = [
+    new FakerAttributeValue({attributeName: 'Emballage', value: 'Soie'}),
+    new FakerAttributeValue({attributeName: 'Emballage', value: 'Carton'}),
   ];
   let numberOfAttributes: number = 0;
   let attributeId: number = 0;
   // Data to create product with combinations
-  const newProductData: ProductData = new ProductData({
+  const newProductData: FakerProduct = new FakerProduct({
     type: 'combinations',
     coverImage: 'cover.jpg',
     thumbImage: 'thumb.jpg',
@@ -67,113 +61,119 @@ describe('FO - Product page - Product page : Change combination', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
     if (newProductData.coverImage) {
-      await files.generateImage(newProductData.coverImage);
+      await utilsFile.generateImage(newProductData.coverImage);
     }
     if (newProductData.thumbImage) {
-      await files.generateImage(newProductData.thumbImage);
+      await utilsFile.generateImage(newProductData.thumbImage);
     }
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
     if (newProductData.coverImage) {
-      await files.deleteFile(newProductData.coverImage);
+      await utilsFile.deleteFile(newProductData.coverImage);
     }
     if (newProductData.thumbImage) {
-      await files.deleteFile(newProductData.thumbImage);
+      await utilsFile.deleteFile(newProductData.thumbImage);
     }
   });
 
   // Pre-condition : Install Hummingbird
-  installHummingbird(`${baseContext}_preTest`);
+  enableHummingbird(`${baseContext}_preTest`);
 
   describe('Create new attribute and values', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Catalog > Attributes & Features\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAttributesPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.catalogParentLink,
-        dashboardPage.attributesAndFeaturesLink,
+        boDashboardPage.catalogParentLink,
+        boDashboardPage.attributesAndFeaturesLink,
       );
-      await attributesPage.closeSfToolBar(page);
+      await boAttributesPage.closeSfToolBar(page);
 
-      const pageTitle = await attributesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(attributesPage.pageTitle);
+      const pageTitle = await boAttributesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boAttributesPage.pageTitle);
     });
 
     it('should reset all filters and get number of attributes in BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirst', baseContext);
 
-      numberOfAttributes = await attributesPage.resetAndGetNumberOfLines(page);
+      numberOfAttributes = await boAttributesPage.resetAndGetNumberOfLines(page);
       expect(numberOfAttributes).to.be.above(0);
     });
 
     it('should go to add new attribute page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAddNewAttributePage', baseContext);
 
-      await attributesPage.goToAddAttributePage(page);
+      await boAttributesPage.goToAddAttributePage(page);
 
-      const pageTitle = await addAttributePage.getPageTitle(page);
-      expect(pageTitle).to.equal(addAttributePage.createPageTitle);
+      const pageTitle = await boAttributesCreatePage.getPageTitle(page);
+      expect(pageTitle).to.equal(boAttributesCreatePage.createPageTitle);
     });
 
     it('should create new attribute', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createNewAttribute', baseContext);
 
-      const textResult = await addAttributePage.addEditAttribute(page, createAttributeData);
-      expect(textResult).to.contains(attributesPage.successfulCreationMessage);
+      const textResult = await boAttributesCreatePage.addEditAttribute(page, createAttributeData);
+      expect(textResult).to.contains(boAttributesPage.successfulCreationMessage);
 
-      const numberOfAttributesAfterCreation = await attributesPage.getNumberOfElementInGrid(page);
+      const numberOfAttributesAfterCreation = await boAttributesPage.getNumberOfElementInGrid(page);
       expect(numberOfAttributesAfterCreation).to.equal(numberOfAttributes + 1);
     });
 
     it('should filter list of attributes', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterToViewCreatedAttribute', baseContext);
 
-      await attributesPage.filterTable(page, 'name', createAttributeData.name);
+      await boAttributesPage.filterTable(page, 'name', createAttributeData.name);
 
-      const textColumn = await attributesPage.getTextColumn(page, 1, 'name');
+      const textColumn = await boAttributesPage.getTextColumn(page, 1, 'name');
       expect(textColumn).to.contains(createAttributeData.name);
 
-      attributeId = parseInt(await attributesPage.getTextColumn(page, 1, 'id_attribute_group'), 10);
+      attributeId = parseInt(await boAttributesPage.getTextColumn(page, 1, 'id_attribute_group'), 10);
       expect(attributeId).to.be.gt(0);
     });
 
     it('should view attribute', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'viewCreatedAttribute', baseContext);
 
-      await attributesPage.viewAttribute(page, 1);
+      await boAttributesPage.viewAttribute(page, 1);
 
-      const pageTitle = await viewAttributePage.getPageTitle(page);
-      expect(pageTitle).to.equal(viewAttributePage.pageTitle(createAttributeData.name));
+      const pageTitle = await boAttributesViewPage.getPageTitle(page);
+      expect(pageTitle).to.equal(boAttributesViewPage.pageTitle(createAttributeData.name));
     });
 
     it('should go to add new value page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCreateValuePage', baseContext);
 
-      await viewAttributePage.goToAddNewValuePage(page);
+      await boAttributesViewPage.goToAddNewValuePage(page);
 
-      const pageTitle = await addValuePage.getPageTitle(page);
-      expect(pageTitle).to.equal(addValuePage.createPageTitle);
+      const pageTitle = await boAttributesValueCreatePage.getPageTitle(page);
+      expect(pageTitle).to.equal(boAttributesValueCreatePage.createPageTitle);
     });
 
-    valuesToCreate.forEach((valueToCreate: AttributeValueData, index: number) => {
+    valuesToCreate.forEach((valueToCreate: FakerAttributeValue, index: number) => {
       it(`should create value n°${index + 1}`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `createValue${index}`, baseContext);
 
         valueToCreate.setAttributeId(attributeId);
-        const textResult = await addValuePage.addEditValue(page, valueToCreate, index === 0);
-        expect(textResult).to.contains(viewAttributePage.successfulCreationMessage);
+        const textResult = await boAttributesValueCreatePage.addEditValue(page, valueToCreate, index === 0);
+        expect(textResult).to.contains(boAttributesViewPage.successfulCreationMessage);
       });
     });
   });
@@ -182,67 +182,67 @@ describe('FO - Product page - Product page : Change combination', async () => {
     it('should go to \'Catalog > Products\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.catalogParentLink,
-        dashboardPage.productsLink,
+        boDashboardPage.catalogParentLink,
+        boDashboardPage.productsLink,
       );
 
-      await productsPage.closeSfToolBar(page);
+      await boProductsPage.closeSfToolBar(page);
 
-      const pageTitle = await productsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(productsPage.pageTitle);
+      const pageTitle = await boProductsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsPage.pageTitle);
     });
 
     it('should click on \'New product\' button and check new product modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewProductButton', baseContext);
 
-      const isModalVisible = await productsPage.clickOnNewProductButton(page);
+      const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
       expect(isModalVisible).to.eq(true);
     });
 
     it('should select the product with combination and check the description', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkStandardProductDescription', baseContext);
 
-      await productsPage.selectProductType(page, newProductData.type);
+      await boProductsPage.selectProductType(page, newProductData.type);
 
-      const productTypeDescription = await productsPage.getProductDescription(page);
-      expect(productTypeDescription).to.contains(productsPage.productWithCombinationsDescription);
+      const productTypeDescription = await boProductsPage.getProductDescription(page);
+      expect(productTypeDescription).to.contains(boProductsPage.productWithCombinationsDescription);
     });
 
     it('should go to new product page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'chooseProductWithCombinations', baseContext);
 
-      await productsPage.clickOnAddNewProduct(page);
+      await boProductsPage.clickOnAddNewProduct(page);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should create product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createProduct', baseContext);
 
-      await createProductsPage.closeSfToolBar(page);
+      await boProductsCreatePage.closeSfToolBar(page);
 
-      const createProductMessage = await createProductsPage.setProduct(page, newProductData);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.setProduct(page, newProductData);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
 
     it('should create combinations and check generate combinations button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createCombinations', baseContext);
 
-      const generateCombinationsButton = await combinationsTab.setProductAttributes(
+      const generateCombinationsButton = await boProductsCreateTabCombinationsPage.setProductAttributes(
         page,
         newProductData.attributes,
       );
-      expect(generateCombinationsButton).to.equal(combinationsTab.generateCombinationsMessage(8));
+      expect(generateCombinationsButton).to.equal(boProductsCreateTabCombinationsPage.generateCombinationsMessage(8));
     });
 
     it('should click on generate combinations button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'generateCombinations', baseContext);
 
-      const successMessage = await combinationsTab.generateCombinations(page);
-      expect(successMessage).to.equal(combinationsTab.successfulGenerateCombinationsMessage(8));
+      const successMessage = await boProductsCreateTabCombinationsPage.generateCombinations(page);
+      expect(successMessage).to.equal(boProductsCreateTabCombinationsPage.successfulGenerateCombinationsMessage(8));
     });
   });
 
@@ -250,28 +250,28 @@ describe('FO - Product page - Product page : Change combination', async () => {
     it('should view my shop', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFoToCreateAccount', baseContext);
 
-      page = await addValuePage.viewMyShop(page);
-      await homePage.changeLanguage(page, 'en');
+      page = await boAttributesValueCreatePage.viewMyShop(page);
+      await foHummingbirdHomePage.changeLanguage(page, 'en');
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage).to.equal(true);
     });
 
     it(`should search the product '${newProductData.name}'`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'searchProduct', baseContext);
 
-      await homePage.searchProduct(page, newProductData.name);
+      await foHummingbirdHomePage.searchProduct(page, newProductData.name);
 
-      const pageTitle = await searchResultsPage.getPageTitle(page);
-      expect(pageTitle).to.equal(searchResultsPage.pageTitle);
+      const pageTitle = await foHummingbirdSearchResultsPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foHummingbirdSearchResultsPage.pageTitle);
     });
 
     it('should go to the product page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToProductPage', baseContext);
 
-      await searchResultsPage.goToProductPage(page, 1);
+      await foHummingbirdSearchResultsPage.goToProductPage(page, 1);
 
-      const pageTitle = await productPage.getPageTitle(page);
+      const pageTitle = await foHummingbirdProductPage.getPageTitle(page);
       expect(pageTitle).to.contains(newProductData.name);
     });
 
@@ -285,9 +285,9 @@ describe('FO - Product page - Product page : Change combination', async () => {
         },
       ];
 
-      await productPage.selectAttributes(page, 'select', combination);
+      await foHummingbirdProductPage.selectAttributes(page, 'select', combination);
 
-      const selectedAttribute = await productPage.getSelectedAttribute(page, 1, 'select');
+      const selectedAttribute = await foHummingbirdProductPage.getSelectedAttribute(page, 1, 'select');
       expect(selectedAttribute).to.equal('S');
     });
 
@@ -301,9 +301,9 @@ describe('FO - Product page - Product page : Change combination', async () => {
         },
       ];
 
-      await productPage.selectAttributes(page, 'radio', combination, 2);
+      await foHummingbirdProductPage.selectAttributes(page, 'radio', combination, 2);
 
-      const selectedAttribute = await productPage.getSelectedAttribute(page, 2, 'radio');
+      const selectedAttribute = await foHummingbirdProductPage.getSelectedAttribute(page, 2, 'radio');
       expect(selectedAttribute).to.equal('Carton');
     });
   });
@@ -312,49 +312,49 @@ describe('FO - Product page - Product page : Change combination', async () => {
     it('should close the FO tab', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'closeFO', baseContext);
 
-      page = await productPage.closePage(browserContext, page, 0);
+      page = await foHummingbirdProductPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should go to attributes page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToAttributesPageToDelete', baseContext);
 
-      await createProductsPage.goToSubMenu(
+      await boProductsCreatePage.goToSubMenu(
         page,
-        dashboardPage.catalogParentLink,
-        dashboardPage.attributesAndFeaturesLink,
+        boDashboardPage.catalogParentLink,
+        boDashboardPage.attributesAndFeaturesLink,
       );
 
-      const pageTitle = await attributesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(attributesPage.pageTitle);
+      const pageTitle = await boAttributesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boAttributesPage.pageTitle);
     });
 
     it('should filter attributes', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterAttributesToDelete', baseContext);
 
-      await attributesPage.resetFilter(page);
-      await attributesPage.filterTable(page, 'name', createAttributeData.name);
+      await boAttributesPage.resetFilter(page);
+      await boAttributesPage.filterTable(page, 'name', createAttributeData.name);
 
-      const textColumn = await attributesPage.getTextColumn(page, 1, 'name');
+      const textColumn = await boAttributesPage.getTextColumn(page, 1, 'name');
       expect(textColumn).to.contains(createAttributeData.name);
     });
 
     it('should delete attribute', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteAttribute', baseContext);
 
-      const textResult = await attributesPage.deleteAttribute(page, 1);
-      expect(textResult).to.contains(attributesPage.successfulDeleteMessage);
+      const textResult = await boAttributesPage.deleteAttribute(page, 1);
+      expect(textResult).to.contains(boAttributesPage.successfulDeleteMessage);
 
-      const numberOfAttributesAfterDelete = await attributesPage.resetAndGetNumberOfLines(page);
+      const numberOfAttributesAfterDelete = await boAttributesPage.resetAndGetNumberOfLines(page);
       expect(numberOfAttributesAfterDelete).to.equal(numberOfAttributes);
     });
 
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilters', baseContext);
 
-      numberOfAttributes = await attributesPage.resetAndGetNumberOfLines(page);
+      numberOfAttributes = await boAttributesPage.resetAndGetNumberOfLines(page);
       expect(numberOfAttributes).to.be.above(1);
     });
   });
@@ -363,5 +363,5 @@ describe('FO - Product page - Product page : Change combination', async () => {
   deleteProductTest(newProductData, `${baseContext}_postTest_1`);
 
   // Post-condition : Uninstall Hummingbird
-  uninstallHummingbird(`${baseContext}_postTest_2`);
+  disableHummingbird(`${baseContext}_postTest_2`);
 });

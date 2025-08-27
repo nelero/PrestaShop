@@ -1,28 +1,22 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import files from '@utils/files';
-
-// Import common tests
 import {deleteProductTest} from '@commonTests/BO/catalog/product';
-
-// Import BO pages
-import loginCommon from '@commonTests/BO/loginBO';
-import dashboardPage from '@pages/BO/dashboard';
-import productsPage from '@pages/BO/catalog/products';
-import createProductsPage from '@pages/BO/catalog/products/add';
-import descriptionTab from '@pages/BO/catalog/products/add/descriptionTab';
-
-// Import FO pages
-import {homePage} from '@pages/FO/classic/home';
-import {productPage} from '@pages/FO/classic/product';
-import {searchResultsPage} from '@pages/FO/classic/searchResults';
-
-// Import data
-import ProductData from '@data/faker/product';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  boDashboardPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  boProductsCreateTabDescriptionPage,
+  type BrowserContext,
+  FakerProduct,
+  foClassicHomePage,
+  foClassicProductPage,
+  foClassicSearchResultsPage,
+  type Page,
+  utilsFile,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_classic_productPage_productPage_changeImage';
 
@@ -43,7 +37,7 @@ describe('FO - Product page - Quick view : Change image', async () => {
   let page: Page;
 
   // Data to create product
-  const newProductData: ProductData = new ProductData({
+  const newProductData: FakerProduct = new FakerProduct({
     type: 'standard',
     quantity: 2,
     coverImage: 'coverImage.jpg',
@@ -52,72 +46,78 @@ describe('FO - Product page - Quick view : Change image', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
-    await files.generateImage(newProductData.coverImage!);
-    await files.generateImage(newProductData.thumbImage!);
-    await files.generateImage('secondThumbImage.jpg');
-    await files.generateImage('thirdThumbImage.jpg');
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
+    await utilsFile.generateImage(newProductData.coverImage!);
+    await utilsFile.generateImage(newProductData.thumbImage!);
+    await utilsFile.generateImage('secondThumbImage.jpg');
+    await utilsFile.generateImage('thirdThumbImage.jpg');
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
-    await files.deleteFile(newProductData.coverImage!);
-    await files.deleteFile(newProductData.thumbImage!);
-    await files.deleteFile('secondThumbImage.jpg');
-    await files.deleteFile('thirdThumbImage.jpg');
+    await utilsPlaywright.closeBrowserContext(browserContext);
+    await utilsFile.deleteFile(newProductData.coverImage!);
+    await utilsFile.deleteFile(newProductData.thumbImage!);
+    await utilsFile.deleteFile('secondThumbImage.jpg');
+    await utilsFile.deleteFile('thirdThumbImage.jpg');
   });
 
   describe(`PRE-TEST: Create new product '${newProductData.name}' with 4 images`, async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Catalog > Products\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(page, dashboardPage.catalogParentLink, dashboardPage.productsLink);
-      await productsPage.closeSfToolBar(page);
+      await boDashboardPage.goToSubMenu(page, boDashboardPage.catalogParentLink, boDashboardPage.productsLink);
+      await boProductsPage.closeSfToolBar(page);
 
-      const pageTitle = await productsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(productsPage.pageTitle);
+      const pageTitle = await boProductsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsPage.pageTitle);
     });
 
     it('should click on \'New product\' button and check new product modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewProductButton', baseContext);
 
-      const isModalVisible = await productsPage.clickOnNewProductButton(page);
+      const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
       expect(isModalVisible).to.be.eq(true);
     });
 
     it('should choose \'Standard product\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'chooseStandardProduct', baseContext);
 
-      await productsPage.selectProductType(page, newProductData.type);
+      await boProductsPage.selectProductType(page, newProductData.type);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should go to new product page and set product name and status', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createStandardProduct', baseContext);
 
-      await productsPage.clickOnAddNewProduct(page);
-      await createProductsPage.setProductName(page, newProductData.name);
+      await boProductsPage.clickOnAddNewProduct(page);
+      await boProductsCreatePage.setProductName(page, newProductData.name);
 
-      await createProductsPage.setProductStatus(page, newProductData.status);
+      await boProductsCreatePage.setProductStatus(page, newProductData.status);
 
-      const createProductMessage = await createProductsPage.saveProduct(page);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.saveProduct(page);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
 
     it('should add 4 images', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addImage', baseContext);
 
-      await descriptionTab.addProductImages(page,
+      await boProductsCreateTabDescriptionPage.addProductImages(page,
         [newProductData.coverImage, newProductData.thumbImage, 'secondThumbImage.jpg', 'thirdThumbImage.jpg']);
 
-      const numOfImages = await descriptionTab.getNumberOfImages(page);
+      const numOfImages = await boProductsCreateTabDescriptionPage.getNumberOfImages(page);
       expect(numOfImages).to.equal(4);
     });
   });
@@ -126,78 +126,78 @@ describe('FO - Product page - Quick view : Change image', async () => {
     it('should go to FO home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFo', baseContext);
 
-      await homePage.goToFo(page);
+      await foClassicHomePage.goToFo(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage).to.equal(true);
     });
 
     it('should search for the created product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'searchCreatedProduct', baseContext);
 
-      await homePage.searchProduct(page, newProductData.name);
+      await foClassicHomePage.searchProduct(page, newProductData.name);
 
-      const productsNumber = await searchResultsPage.getSearchResultsNumber(page);
+      const productsNumber = await foClassicSearchResultsPage.getSearchResultsNumber(page);
       expect(productsNumber).to.equal(1);
     });
 
     it('should go to the created product page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCreatedProductPage', baseContext);
 
-      await searchResultsPage.goToProductPage(page, 1);
+      await foClassicSearchResultsPage.goToProductPage(page, 1);
 
-      const pageTitle = await productPage.getPageTitle(page);
+      const pageTitle = await foClassicProductPage.getPageTitle(page);
       expect(pageTitle).to.equal(newProductData.name);
     });
 
     it('should display the second image', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'displaySecondImage', baseContext);
 
-      const firstCoverImageURL = await productPage.getCoverImage(page);
+      const firstCoverImageURL = await foClassicProductPage.getCoverImage(page);
 
-      const secondCoverImageURL = await productPage.selectThumbImage(page, 2);
+      const secondCoverImageURL = await foClassicProductPage.selectThumbImage(page, 2);
       expect(firstCoverImageURL).to.not.equal(secondCoverImageURL);
     });
 
     it('should display the first image', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'displayFirstImage', baseContext);
 
-      const firstCoverImageURL = await productPage.getCoverImage(page);
+      const firstCoverImageURL = await foClassicProductPage.getCoverImage(page);
 
-      const secondCoverImageURL = await productPage.selectThumbImage(page, 1);
+      const secondCoverImageURL = await foClassicProductPage.selectThumbImage(page, 1);
       expect(firstCoverImageURL).to.not.equal(secondCoverImageURL);
     });
 
     it('should click on the arrow right and click on the 4th product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'display4ThImage', baseContext);
 
-      const coverImageURL = await productPage.getCoverImage(page);
-      await productPage.scrollBoxArrowsImages(page, 'right');
+      const coverImageURL = await foClassicProductPage.getCoverImage(page);
+      await foClassicProductPage.scrollBoxArrowsImages(page, 'right');
 
-      const fourthCoverImageURL = await productPage.selectThumbImage(page, 4);
+      const fourthCoverImageURL = await foClassicProductPage.selectThumbImage(page, 4);
       expect(coverImageURL).to.not.equal(fourthCoverImageURL);
     });
 
     it('should zoom the cover image and check the modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'zoomImage', baseContext);
 
-      const isModalVisible = await productPage.zoomCoverImage(page);
+      const isModalVisible = await foClassicProductPage.zoomCoverImage(page);
       expect(isModalVisible).to.equal(true);
     });
 
     it('should click on the third little image', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnSecondLittleImage', baseContext);
 
-      const coverImageURL = await productPage.getCoverImageFromProductModal(page);
+      const coverImageURL = await foClassicProductPage.getCoverImageFromProductModal(page);
 
-      const thirdCoverImageURL = await productPage.selectThumbImageFromProductModal(page, 3);
+      const thirdCoverImageURL = await foClassicProductPage.selectThumbImageFromProductModal(page, 3);
       expect(coverImageURL).to.not.equal(thirdCoverImageURL);
     });
 
     it('should close the product modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'closeModal', baseContext);
 
-      const isModalNotVisible = await productPage.closeProductModal(page);
+      const isModalNotVisible = await foClassicProductPage.closeProductModal(page);
       expect(isModalNotVisible).to.equal(true);
     });
   });

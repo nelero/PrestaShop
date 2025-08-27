@@ -1,8 +1,7 @@
 import {
-  // Import data
   dataCustomers,
+  type Page,
 } from '@prestashop-core/ui-testing';
-import {Page} from 'playwright';
 
 /**
  * Login into BO to access BO Urls
@@ -68,7 +67,7 @@ export default [
     urls: [
       {
         name: 'BO_login',
-        url: 'index.php?controller=AdminLogin',
+        url: 'index.php/login',
         async customAction(page: Page): Promise<void> {
           await loginBO(page);
         },

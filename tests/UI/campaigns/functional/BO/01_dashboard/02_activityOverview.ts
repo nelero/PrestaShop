@@ -1,57 +1,49 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import statsPage from '@pages/BO/stats';
-import shoppingCartsPage from '@pages/BO/orders/shoppingCarts';
-import ordersPage from '@pages/BO/orders';
-import {viewOrderBasePage} from '@pages/BO/orders/view/viewOrderBasePage';
-import merchandiseReturnsPage from '@pages/BO/customerService/merchandiseReturns';
-import monitoringPage from '@pages/BO/catalog/monitoring';
-import productsPage from '@pages/BO/catalog/products';
-import createProductPage from '@pages/BO/catalog/products/add';
-import customerServicePage from '@pages/BO/customerService/customerService';
-import productCommentsPage from '@pages/BO/modules/productComments';
-import newsletterSubscriptionPage from '@pages/BO/modules/psEmailSubscription';
-import customersPage from '@pages/BO/customers';
-
-// Import FO pages
-import {homePage} from '@pages/FO/classic/home';
-import {loginPage as foLoginPage} from '@pages/FO/classic/login';
-import {productPage} from '@pages/FO/classic/product';
-import {cartPage} from '@pages/FO/classic/cart';
-import {checkoutPage} from '@pages/FO/classic/checkout';
-import {orderConfirmationPage} from '@pages/FO/classic/checkout/orderConfirmation';
-import {myAccountPage} from '@pages/FO/classic/myAccount';
-import {orderHistoryPage} from '@pages/FO/classic/myAccount/orderHistory';
-import {orderDetailsPage} from '@pages/FO/classic/myAccount/orderDetails';
-import {merchandiseReturnsPage as foMerchandiseReturnsPage} from '@pages/FO/classic/myAccount/merchandiseReturns';
-import {contactUsPage} from '@pages/FO/classic/contactUs';
-import addCustomerPage from '@pages/BO/customers/add';
+import {expect} from 'chai';
 
 // Import common tests
-import loginCommon from '@commonTests/BO/loginBO';
 import {enableMerchandiseReturns, disableMerchandiseReturns} from '@commonTests/BO/customerService/merchandiseReturns';
 import {deleteProductTest} from '@commonTests/BO/catalog/product';
 import {deleteCustomerTest} from '@commonTests/BO/customers/customer';
 
-// Import data
-import Orders from '@data/demo/orders';
-import ProductData from '@data/faker/product';
-import MessageData from '@data/faker/message';
-
 import {
-  // Import data
+  boCustomersPage,
+  boCustomersCreatePage,
+  boCustomerServicePage,
+  boDashboardPage,
+  boLoginPage,
+  boMerchandiseReturnsPage,
+  boMonitoringPage,
+  boOrdersPage,
+  boOrdersViewBasePage,
+  boProductsPage,
+  boProductsCreatePage,
+  boShoppingCartsPage,
+  boStatisticsPage,
+  type BrowserContext,
   dataCustomers,
+  dataOrders,
   dataOrderStatuses,
   dataPaymentMethods,
+  FakerContactMessage,
   FakerCustomer,
+  FakerProduct,
+  foClassicCartPage,
+  foClassicCheckoutPage,
+  foClassicCheckoutOrderConfirmationPage,
+  foClassicContactUsPage,
+  foClassicHomePage,
+  foClassicLoginPage,
+  foClassicMyAccountPage,
+  foClassicMyMerchandiseReturnsPage,
+  foClassicMyOrderDetailsPage,
+  foClassicMyOrderHistoryPage,
+  foClassicProductPage,
+  modProductCommentsBoMain,
+  modPsEmailSubscriptionBoMain,
+  type Page,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_dashboard_activityOverview';
 
@@ -68,86 +60,91 @@ describe('BO - Dashboard : Activity overview', async () => {
   let totalSubscribersNumber: number;
 
   // Data to create product out of stock
-  const productData: ProductData = new ProductData({
+  const productData: FakerProduct = new FakerProduct({
     type: 'standard',
     quantity: 0,
     status: true,
   });
 
-  const contactUsData: MessageData = new MessageData({
+  const contactUsData: FakerContactMessage = new FakerContactMessage({
     subject: 'Customer service',
-    reference: Orders.firstOrder.reference,
+    reference: dataOrders.order_1.reference,
   });
 
   const createCustomerData: FakerCustomer = new FakerCustomer({newsletter: true});
 
   enableMerchandiseReturns(baseContext);
 
-  // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Check Online visitor & Active shopping carts', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     describe('Check Active shopping carts', async () => {
       it('should click on Active shopping carts link and check shopping carts page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickActiveShoppingCarts', baseContext);
 
-        await dashboardPage.clickOnActiveShoppingCartsLink(page);
+        await boDashboardPage.clickOnActiveShoppingCartsLink(page);
 
-        const pageTitle = await shoppingCartsPage.getPageTitle(page);
-        expect(pageTitle).to.eq(shoppingCartsPage.pageTitle);
+        const pageTitle = await boShoppingCartsPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boShoppingCartsPage.pageTitle);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard2', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
 
       it('should get the number of active shopping carts', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'getNumberOfActiveShoppingCarts', baseContext);
 
-        activeShoppingCarts = await dashboardPage.getNumberOfActiveShoppingCarts(page);
+        activeShoppingCarts = await boDashboardPage.getNumberOfActiveShoppingCarts(page);
       });
 
       it('should view my shop', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'viewMyShop2', baseContext);
 
-        page = await dashboardPage.viewMyShop(page);
-        await homePage.changeLanguage(page, 'en');
+        page = await boDashboardPage.viewMyShop(page);
+        await foClassicHomePage.changeLanguage(page, 'en');
 
-        const isHomePage = await homePage.isHomePage(page);
+        const isHomePage = await foClassicHomePage.isHomePage(page);
         expect(isHomePage, 'Fail to open FO home page').to.eq(true);
       });
 
       it('should go to login page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToLoginFO2', baseContext);
 
-        await homePage.goToLoginPage(page);
+        await foClassicHomePage.goToLoginPage(page);
 
-        const pageTitle = await foLoginPage.getPageTitle(page);
-        expect(pageTitle, 'Fail to open FO login page').to.contains(foLoginPage.pageTitle);
+        const pageTitle = await foClassicLoginPage.getPageTitle(page);
+        expect(pageTitle, 'Fail to open FO login page').to.contains(foClassicLoginPage.pageTitle);
       });
 
       it('should sign in with default customer', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'sighInFO2', baseContext);
 
-        await foLoginPage.customerLogin(page, dataCustomers.johnDoe);
+        await foClassicLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-        const isCustomerConnected = await foLoginPage.isCustomerConnected(page);
+        const isCustomerConnected = await foClassicLoginPage.isCustomerConnected(page);
         expect(isCustomerConnected, 'Customer is not connected').to.eq(true);
       });
 
@@ -155,13 +152,13 @@ describe('BO - Dashboard : Activity overview', async () => {
         await testContext.addContextItem(this, 'testIdentifier', 'addProductToCart', baseContext);
 
         // Go to home page
-        await foLoginPage.goToHomePage(page);
+        await foClassicLoginPage.goToHomePage(page);
         // Go to the first product page
-        await homePage.goToProductPage(page, 1);
+        await foClassicHomePage.goToProductPage(page, 1);
         // Add the product to the cart
-        await productPage.addProductToTheCart(page);
+        await foClassicProductPage.addProductToTheCart(page);
 
-        const notificationsNumber = await cartPage.getCartNotificationsNumber(page);
+        const notificationsNumber = await foClassicCartPage.getCartNotificationsNumber(page);
         expect(notificationsNumber).to.be.equal(1);
       });
 
@@ -169,10 +166,10 @@ describe('BO - Dashboard : Activity overview', async () => {
         await testContext.addContextItem(this, 'testIdentifier', 'goToDeliveryStep', baseContext);
 
         // Proceed to checkout the shopping cart
-        await cartPage.clickOnProceedToCheckout(page);
+        await foClassicCartPage.clickOnProceedToCheckout(page);
 
         // Address step - Go to delivery step
-        const isStepAddressComplete = await checkoutPage.goToDeliveryStep(page);
+        const isStepAddressComplete = await foClassicCheckoutPage.goToDeliveryStep(page);
         expect(isStepAddressComplete, 'Step Address is not complete').to.eq(true);
       });
 
@@ -180,7 +177,7 @@ describe('BO - Dashboard : Activity overview', async () => {
         await testContext.addContextItem(this, 'testIdentifier', 'goToPaymentStep', baseContext);
 
         // Delivery step - Go to payment step
-        const isStepDeliveryComplete = await checkoutPage.goToPaymentStep(page);
+        const isStepDeliveryComplete = await foClassicCheckoutPage.goToPaymentStep(page);
         expect(isStepDeliveryComplete, 'Step Address is not complete').to.eq(true);
       });
 
@@ -188,28 +185,28 @@ describe('BO - Dashboard : Activity overview', async () => {
         await testContext.addContextItem(this, 'testIdentifier', 'confirmOrder', baseContext);
 
         // Payment step - Choose payment step
-        await checkoutPage.choosePaymentAndOrder(page, dataPaymentMethods.wirePayment.moduleName);
+        await foClassicCheckoutPage.choosePaymentAndOrder(page, dataPaymentMethods.wirePayment.moduleName);
 
         // Check the confirmation message
-        const cardTitle = await orderConfirmationPage.getOrderConfirmationCardTitle(page);
-        expect(cardTitle).to.contains(orderConfirmationPage.orderConfirmationCardTitle);
+        const cardTitle = await foClassicCheckoutOrderConfirmationPage.getOrderConfirmationCardTitle(page);
+        expect(cardTitle).to.contains(foClassicCheckoutOrderConfirmationPage.orderConfirmationCardTitle);
       });
 
       it('should go back to BO', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToBO2', baseContext);
 
         // Close page and init page objects
-        page = await orderConfirmationPage.closePage(browserContext, page, 0);
-        await shoppingCartsPage.reloadPage(page);
+        page = await foClassicCheckoutOrderConfirmationPage.closePage(browserContext, page, 0);
+        await boShoppingCartsPage.reloadPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.contains(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boDashboardPage.pageTitle);
       });
 
       it('should check the number of active shopping carts', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkNumberOfShoppingCarts', baseContext);
 
-        const newActiveShoppingCarts = await dashboardPage.getNumberOfActiveShoppingCarts(page);
+        const newActiveShoppingCarts = await boDashboardPage.getNumberOfActiveShoppingCarts(page);
         expect(newActiveShoppingCarts).to.eq(activeShoppingCarts + 1);
       });
     });
@@ -220,38 +217,38 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should get Orders number', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'getOrdersNumber', baseContext);
 
-        ordersNumber = await dashboardPage.getNumberOfOrders(page);
+        ordersNumber = await boDashboardPage.getNumberOfOrders(page);
       });
 
       it('should click on Orders link and check Orders page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnOrdersLink', baseContext);
 
-        await dashboardPage.clickOnOrdersLink(page);
+        await boDashboardPage.clickOnOrdersLink(page);
 
-        const pageTitle = await ordersPage.getPageTitle(page);
-        expect(pageTitle).to.contains(ordersPage.pageTitle);
+        const pageTitle = await boOrdersPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boOrdersPage.pageTitle);
       });
 
       it('should change the first order status to Processing in progress', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'changeOrderStatus1', baseContext);
 
-        const textResult = await ordersPage.setOrderStatus(page, 1, dataOrderStatuses.processingInProgress);
-        expect(textResult).to.equal(ordersPage.successfulUpdateMessage);
+        const textResult = await boOrdersPage.setOrderStatus(page, 1, dataOrderStatuses.processingInProgress);
+        expect(textResult).to.equal(boOrdersPage.successfulUpdateMessage);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard3', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
 
       it('should check Orders number', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkOrdersNumber', baseContext);
 
-        const newOrdersNumber = await dashboardPage.getNumberOfOrders(page);
+        const newOrdersNumber = await boDashboardPage.getNumberOfOrders(page);
         expect(newOrdersNumber).to.eq(ordersNumber + 1);
       });
     });
@@ -260,110 +257,107 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should get Return/Exchange number', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'getReturnExchangeNumber', baseContext);
 
-        numberOfReturnExchanges = await dashboardPage.getNumberOfReturnExchange(page);
+        numberOfReturnExchanges = await boDashboardPage.getNumberOfReturnExchange(page);
       });
 
       it('should click on Return/Exchange link and check merchandise returns page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnReturnExchangeLink', baseContext);
 
-        await dashboardPage.clickOnReturnExchangeLink(page);
+        await boDashboardPage.clickOnReturnExchangeLink(page);
 
-        const pageTitle = await merchandiseReturnsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(merchandiseReturnsPage.pageTitle);
+        const pageTitle = await boMerchandiseReturnsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boMerchandiseReturnsPage.pageTitle);
       });
 
       it('should go to orders page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToOrdersPage2', baseContext);
 
-        await dashboardPage.goToSubMenu(
+        await boDashboardPage.goToSubMenu(
           page,
-          dashboardPage.ordersParentLink,
-          dashboardPage.ordersLink,
+          boDashboardPage.ordersParentLink,
+          boDashboardPage.ordersLink,
         );
 
-        const pageTitle = await ordersPage.getPageTitle(page);
-        expect(pageTitle).to.contains(ordersPage.pageTitle);
+        const pageTitle = await boOrdersPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boOrdersPage.pageTitle);
       });
 
       it('should change the first order status to Delivered', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'changeOrderStatus2', baseContext);
 
-        const textResult = await ordersPage.setOrderStatus(page, 1, dataOrderStatuses.delivered);
-        expect(textResult).to.equal(ordersPage.successfulUpdateMessage);
+        const textResult = await boOrdersPage.setOrderStatus(page, 1, dataOrderStatuses.delivered);
+        expect(textResult).to.equal(boOrdersPage.successfulUpdateMessage);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard4', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
 
       it('should view my shop', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'viewMyShop3', baseContext);
 
-        page = await viewOrderBasePage.viewMyShop(page);
-        await homePage.changeLanguage(page, 'en');
+        page = await boOrdersViewBasePage.viewMyShop(page);
+        await foClassicHomePage.changeLanguage(page, 'en');
 
-        const isHomePage = await homePage.isHomePage(page);
+        const isHomePage = await foClassicHomePage.isHomePage(page);
         expect(isHomePage, 'Home page is not displayed').to.eq(true);
       });
 
       it('should go to account page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToAccountPage', baseContext);
 
-        await homePage.goToMyAccountPage(page);
+        await foClassicHomePage.goToMyAccountPage(page);
 
-        const pageTitle = await myAccountPage.getPageTitle(page);
-        expect(pageTitle).to.contains(myAccountPage.pageTitle);
+        const pageTitle = await foClassicMyAccountPage.getPageTitle(page);
+        expect(pageTitle).to.contains(foClassicMyAccountPage.pageTitle);
       });
 
       it('should go to \'Order history and details\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToOrderHistoryPage', baseContext);
 
-        await myAccountPage.goToHistoryAndDetailsPage(page);
+        await foClassicMyAccountPage.goToHistoryAndDetailsPage(page);
 
-        const pageTitle = await orderHistoryPage.getPageTitle(page);
-        expect(pageTitle).to.contains(orderHistoryPage.pageTitle);
+        const pageTitle = await foClassicMyOrderHistoryPage.getPageTitle(page);
+        expect(pageTitle).to.contains(foClassicMyOrderHistoryPage.pageTitle);
       });
 
       it('should go to the first order in the list and check the existence of order return form', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'isOrderReturnFormVisible', baseContext);
 
-        await orderHistoryPage.goToDetailsPage(page, 1);
+        await foClassicMyOrderHistoryPage.goToDetailsPage(page, 1);
 
-        const result = await orderDetailsPage.isOrderReturnFormVisible(page);
+        const result = await foClassicMyOrderDetailsPage.isOrderReturnFormVisible(page);
         expect(result).to.eq(true);
       });
 
       it('should create a merchandise return', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'createMerchandiseReturn', baseContext);
 
-        await orderDetailsPage.requestMerchandiseReturn(page, 'test', 1, [{quantity: 1}]);
+        await foClassicMyOrderDetailsPage.requestMerchandiseReturn(page, 'test', 1, [{quantity: 1}]);
 
-        const pageTitle = await foMerchandiseReturnsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(foMerchandiseReturnsPage.pageTitle);
+        const pageTitle = await foClassicMyMerchandiseReturnsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(foClassicMyMerchandiseReturnsPage.pageTitle);
       });
 
       it('should close the FO page and go back to BO', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'closeFoAndGoBackToBO', baseContext);
 
-        page = await orderDetailsPage.closePage(browserContext, page, 0);
-        await dashboardPage.reloadPage(page);
+        page = await foClassicMyOrderDetailsPage.closePage(browserContext, page, 0);
+        await boDashboardPage.reloadPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.contains(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boDashboardPage.pageTitle);
       });
 
-      // @todo https://github.com/PrestaShop/PrestaShop/issues/34321
       it('should check Return/Exchange number', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkReturnExchangeNumber', baseContext);
 
-        this.skip();
-
-        const newNumberOfReturnExchanges = await dashboardPage.getNumberOfReturnExchange(page);
+        const newNumberOfReturnExchanges = await boDashboardPage.getNumberOfReturnExchange(page);
         expect(newNumberOfReturnExchanges).to.eq(numberOfReturnExchanges + 1);
       });
     });
@@ -372,17 +366,17 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should check Abandoned carts number', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'getAbandonedCartsNumber', baseContext);
 
-        const abandonedCartsNumber = await dashboardPage.getNumberOfAbandonedCarts(page);
+        const abandonedCartsNumber = await boDashboardPage.getNumberOfAbandonedCarts(page);
         expect(abandonedCartsNumber).to.eq(0);
       });
 
       it('should click on Abandoned carts link and check Shopping carts page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickAbandonedCartsLink', baseContext);
 
-        await dashboardPage.clickOnAbandonedCartsLink(page);
+        await boDashboardPage.clickOnAbandonedCartsLink(page);
 
-        const pageTitle = await shoppingCartsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(shoppingCartsPage.pageTitle);
+        const pageTitle = await boShoppingCartsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boShoppingCartsPage.pageTitle);
       });
     });
 
@@ -390,78 +384,78 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard5', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
 
       it('should get out of stock products number', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'getOutOfStockProducts', baseContext);
 
-        outOfStockProductNumber = await dashboardPage.getOutOfStockProducts(page);
+        outOfStockProductNumber = await boDashboardPage.getOutOfStockProducts(page);
       });
 
       it('should click on Out of stock products link and check Monitoring page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOutOfStockLink', baseContext);
 
-        await dashboardPage.clickOnOutOfStockProductsLink(page);
+        await boDashboardPage.clickOnOutOfStockProductsLink(page);
 
-        const pageTitle = await monitoringPage.getPageTitle(page);
-        expect(pageTitle).to.contains(monitoringPage.pageTitle);
+        const pageTitle = await boMonitoringPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boMonitoringPage.pageTitle);
       });
 
       it('should go to \'Catalog > Products\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPage', baseContext);
 
-        await dashboardPage.goToSubMenu(
+        await boDashboardPage.goToSubMenu(
           page,
-          dashboardPage.catalogParentLink,
-          dashboardPage.productsLink,
+          boDashboardPage.catalogParentLink,
+          boDashboardPage.productsLink,
         );
-        await productsPage.closeSfToolBar(page);
+        await boProductsPage.closeSfToolBar(page);
 
-        const pageTitle = await productsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(productsPage.pageTitle);
+        const pageTitle = await boProductsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsPage.pageTitle);
       });
 
       it('should click on \'New product\' button and check new product modal', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewProductButton', baseContext);
 
-        const isModalVisible = await productsPage.clickOnNewProductButton(page);
+        const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
         expect(isModalVisible).to.eq(true);
       });
 
       it('should choose \'Standard product\' and go to new product page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'chooseStandardProduct', baseContext);
 
-        await productsPage.selectProductType(page, productData.type);
-        await productsPage.clickOnAddNewProduct(page);
+        await boProductsPage.selectProductType(page, productData.type);
+        await boProductsPage.clickOnAddNewProduct(page);
 
-        const pageTitle = await createProductPage.getPageTitle(page);
-        expect(pageTitle).to.contains(createProductPage.pageTitle);
+        const pageTitle = await boProductsCreatePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
       });
 
       it('should create out of stock product', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'createStandardProduct', baseContext);
 
-        const createProductMessage = await createProductPage.setProduct(page, productData);
-        expect(createProductMessage).to.equal(createProductPage.successfulUpdateMessage);
+        const createProductMessage = await boProductsCreatePage.setProduct(page, productData);
+        expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard6', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
 
       it('should check out of stock products number', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkOutOfStockProductsNumber', baseContext);
 
-        const newOutOfStockProductNumber = await dashboardPage.getOutOfStockProducts(page);
+        const newOutOfStockProductNumber = await boDashboardPage.getOutOfStockProducts(page);
         expect(newOutOfStockProductNumber).to.eq(outOfStockProductNumber + 1);
       });
     });
@@ -472,68 +466,68 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should get new message number', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'getNewMessagesNumber', baseContext);
 
-        messagesNumber = await dashboardPage.getNumberOfNewMessages(page);
+        messagesNumber = await boDashboardPage.getNumberOfNewMessages(page);
       });
 
       it('should click on New messages link and check Customer service page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewMessagesLink', baseContext);
 
-        await dashboardPage.clickOnNewMessagesLink(page);
+        await boDashboardPage.clickOnNewMessagesLink(page);
 
-        const pageTitle = await customerServicePage.getPageTitle(page);
-        expect(pageTitle).to.contains(customerServicePage.pageTitle);
+        const pageTitle = await boCustomerServicePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boCustomerServicePage.pageTitle);
       });
 
       it('should view my store', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToFO', baseContext);
 
-        page = await dashboardPage.viewMyShop(page);
-        await homePage.changeLanguage(page, 'en');
+        page = await boDashboardPage.viewMyShop(page);
+        await foClassicHomePage.changeLanguage(page, 'en');
 
-        const isHomePage = await homePage.isHomePage(page);
+        const isHomePage = await foClassicHomePage.isHomePage(page);
         expect(isHomePage, 'Fail to open FO home page').to.eq(true);
       });
 
       it('should to contact us page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goOnContactPage', baseContext);
 
-        await homePage.goToFooterLink(page, 'Contact us');
+        await foClassicHomePage.goToFooterLink(page, 'Contact us');
 
-        const pageTitle = await contactUsPage.getPageTitle(page);
-        expect(pageTitle).to.equal(contactUsPage.pageTitle);
+        const pageTitle = await foClassicContactUsPage.getPageTitle(page);
+        expect(pageTitle).to.equal(foClassicContactUsPage.pageTitle);
       });
 
       it('should send message to customer service', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'sendMessage', baseContext);
 
-        await contactUsPage.sendMessage(page, contactUsData);
+        await foClassicContactUsPage.sendMessage(page, contactUsData);
 
-        const validationMessage = await contactUsPage.getAlertSuccess(page);
-        expect(validationMessage).to.equal(contactUsPage.validationMessage);
+        const validationMessage = await foClassicContactUsPage.getAlertSuccess(page);
+        expect(validationMessage).to.equal(foClassicContactUsPage.validationMessage);
       });
 
       it('should go back to BO', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToBo3', baseContext);
 
-        page = await contactUsPage.closePage(browserContext, page, 0);
+        page = await foClassicContactUsPage.closePage(browserContext, page, 0);
 
-        const pageTitle = await customerServicePage.getPageTitle(page);
-        expect(pageTitle).to.contains(customerServicePage.pageTitle);
+        const pageTitle = await boCustomerServicePage.getPageTitle(page);
+        expect(pageTitle).to.contains(boCustomerServicePage.pageTitle);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard7', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
 
       it('should check the number of new messages', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkNumberOfNewMessages', baseContext);
 
-        const newMessagesNumber = await dashboardPage.getNumberOfNewMessages(page);
+        const newMessagesNumber = await boDashboardPage.getNumberOfNewMessages(page);
         expect(newMessagesNumber).to.eq(messagesNumber + 1);
       });
     });
@@ -542,17 +536,17 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should get the number of product reviews', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'getNumberOfProductReviews', baseContext);
 
-        const productReviewsNumber = await dashboardPage.getNumberOfProductReviews(page);
+        const productReviewsNumber = await boDashboardPage.getNumberOfProductReviews(page);
         expect(productReviewsNumber).to.eq(0);
       });
 
       it('should click on Products reviews link and check Product comments page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnProductReviewLink', baseContext);
 
-        await dashboardPage.clickOnProductReviewsLink(page);
+        await boDashboardPage.clickOnProductReviewsLink(page);
 
-        const pageTitle = await productCommentsPage.getPageSubTitle(page);
-        expect(pageTitle).to.eq(productCommentsPage.pageTitle);
+        const pageTitle = await modProductCommentsBoMain.getPageSubTitle(page);
+        expect(pageTitle).to.eq(modProductCommentsBoMain.pageTitle);
       });
     });
   });
@@ -561,64 +555,64 @@ describe('BO - Dashboard : Activity overview', async () => {
     it('should go back to dashboard page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard8', baseContext);
 
-      await shoppingCartsPage.goToDashboardPage(page);
+      await boShoppingCartsPage.goToDashboardPage(page);
 
-      const pageTitle = await dashboardPage.getPageTitle(page);
-      expect(pageTitle).to.eq(dashboardPage.pageTitle);
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.eq(boDashboardPage.pageTitle);
     });
 
     it('should get the number of customers', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'getNumberOfCustomers', baseContext);
 
-      newCustomersNumber = await dashboardPage.getNumberOfNewCustomers(page);
+      newCustomersNumber = await boDashboardPage.getNumberOfNewCustomers(page);
     });
 
     it('should get the number of new subscriptions', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'getNumberOfNewSubscriptions', baseContext);
 
-      newSubscriptionsNumber = await dashboardPage.getNumberOfNewSubscriptions(page);
+      newSubscriptionsNumber = await boDashboardPage.getNumberOfNewSubscriptions(page);
     });
 
     it('should get the number of total subscribers', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'getNumberOfTotalSubscribers', baseContext);
 
-      totalSubscribersNumber = await dashboardPage.getNumberOfTotalSubscribers(page);
+      totalSubscribersNumber = await boDashboardPage.getNumberOfTotalSubscribers(page);
     });
 
     describe('Check Customers', async () => {
       it('should click on New customers link and check Customers page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewCustomersLink', baseContext);
 
-        await dashboardPage.clickOnNewCustomersLink(page);
+        await boDashboardPage.clickOnNewCustomersLink(page);
 
-        const pageTitle = await customersPage.getPageTitle(page);
-        expect(pageTitle).to.eq(customersPage.pageTitle);
+        const pageTitle = await boCustomersPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boCustomersPage.pageTitle);
       });
 
       it('should create new customer and enable newsletter status', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'createNewCustomer', baseContext);
 
-        await customersPage.goToAddNewCustomerPage(page);
+        await boCustomersPage.goToAddNewCustomerPage(page);
 
-        const textResult = await addCustomerPage.createEditCustomer(page, createCustomerData);
-        expect(textResult).to.equal(customersPage.successfulCreationMessage);
+        const textResult = await boCustomersCreatePage.createEditCustomer(page, createCustomerData);
+        expect(textResult).to.equal(boCustomersPage.successfulCreationMessage);
 
-        await customersPage.setNewsletterStatus(page, 1, true);
+        await boCustomersPage.setNewsletterStatus(page, 1, true);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard9', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
 
       it('should check the number of new customers', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkNumberOfNewCustomer', baseContext);
 
-        const newCustomers = await dashboardPage.getNumberOfNewCustomers(page);
+        const newCustomers = await boDashboardPage.getNumberOfNewCustomers(page);
         expect(newCustomers).to.eq(newCustomersNumber + 1);
       });
     });
@@ -627,26 +621,26 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should check the number of new subscriptions', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkNumberOfNewSubscriptions', baseContext);
 
-        const newSubscriptions = await dashboardPage.getNumberOfNewSubscriptions(page);
+        const newSubscriptions = await boDashboardPage.getNumberOfNewSubscriptions(page);
         expect(newSubscriptions).to.eq(newSubscriptionsNumber + 1);
       });
 
       it('should click on new subscriptions link and check Stats page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewSubscriptionsLink', baseContext);
 
-        await dashboardPage.clickOnNewSubscriptionsLink(page);
+        await boDashboardPage.clickOnNewSubscriptionsLink(page);
 
-        const pageTitle = await statsPage.getPageTitle(page);
-        expect(pageTitle).to.eq(statsPage.pageTitle);
+        const pageTitle = await boStatisticsPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boStatisticsPage.pageTitle);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard10', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
     });
 
@@ -654,26 +648,26 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should check the number of total subscribers', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkNumberOfTotalSubscribers', baseContext);
 
-        const newTotalSubscribers = await dashboardPage.getNumberOfTotalSubscribers(page);
+        const newTotalSubscribers = await boDashboardPage.getNumberOfTotalSubscribers(page);
         expect(newTotalSubscribers).to.eq(totalSubscribersNumber + 1);
       });
 
       it('should click on Total subscribers link and check Newsletter subscription page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnTotalSubscribersLink', baseContext);
 
-        await dashboardPage.clickOnTotalSubscribersLink(page);
+        await boDashboardPage.clickOnTotalSubscribersLink(page);
 
-        const pageTitle = await newsletterSubscriptionPage.getPageSubTitle(page);
-        expect(pageTitle).to.eq(newsletterSubscriptionPage.pageTitle);
+        const pageTitle = await modPsEmailSubscriptionBoMain.getPageSubTitle(page);
+        expect(pageTitle).to.eq(modPsEmailSubscriptionBoMain.pageTitle);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard11', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
       });
     });
   });
@@ -683,25 +677,38 @@ describe('BO - Dashboard : Activity overview', async () => {
       it('should get the number of visits', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'getNumberOfVisits', baseContext);
 
-        newCustomersNumber = await dashboardPage.getNumberOfVisits(page);
+        newCustomersNumber = await boDashboardPage.getNumberOfVisits(page);
       });
 
       it('should click on Visits link and check Stats page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'clickOnVisitsLink', baseContext);
 
-        await dashboardPage.clickOnVisitsLink(page);
+        await boDashboardPage.clickOnVisitsLink(page);
 
-        const pageTitle = await statsPage.getPageTitle(page);
-        expect(pageTitle).to.eq(statsPage.pageTitle);
+        const pageTitle = await boStatisticsPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boStatisticsPage.pageTitle);
       });
 
       it('should go back to dashboard page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goBackToDashboard12', baseContext);
 
-        await shoppingCartsPage.goToDashboardPage(page);
+        await boShoppingCartsPage.goToDashboardPage(page);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.eq(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.eq(boDashboardPage.pageTitle);
+      });
+    });
+
+    describe('Check Traffic Sources', async () => {
+      it('should check traffic sources', async function () {
+        await testContext.addContextItem(this, 'testIdentifier', 'checkTrafficSources', baseContext);
+
+        const trafficSources = await boDashboardPage.getTrafficSources(page);
+
+        expect(trafficSources.length).to.equals(3);
+        expect(trafficSources[0].label).to.equals('Direct link');
+        expect(trafficSources[1].label).to.equals('prestashop.com');
+        expect(trafficSources[2].label).to.equals('localhost');
       });
     });
   });
@@ -710,11 +717,70 @@ describe('BO - Dashboard : Activity overview', async () => {
     it('should click on configure link', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnConfigureLink', baseContext);
 
-      const isConfigureFormVisible = await dashboardPage.clickOnConfigureLink(page);
+      const isConfigureFormVisible = await boDashboardPage.clickOnConfigureActivityOverviewLink(page);
       expect(isConfigureFormVisible).to.eq(true);
     });
 
-    // @todo https://github.com/PrestaShop/PrestaShop/issues/34326
+    it('should update the form', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'setFormActivityOverview', baseContext);
+
+      await boDashboardPage.setFormActivityOverview(page, 45, 45, 12, 96);
+      await boDashboardPage.reloadPage(page);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.eq(boDashboardPage.pageTitle);
+    });
+
+    // @todo : https://github.com/PrestaShop/PrestaShop/issues/37033
+    it('should update the form', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'checkFormActivityOverview', baseContext);
+
+      const isConfigureFormVisible = await boDashboardPage.clickOnConfigureActivityOverviewLink(page);
+      expect(isConfigureFormVisible).to.eq(true);
+
+      this.skip();
+
+      const numActiveCarts = parseInt(await boDashboardPage.getFormActivityOverviewValue(page, 'active_cart'), 10);
+      expect(numActiveCarts).to.equals(45);
+
+      const numOnlineVisitor = parseInt(await boDashboardPage.getFormActivityOverviewValue(page, 'online_visitor'), 10);
+      expect(numOnlineVisitor).to.equals(45);
+
+      const numAbandonedCartMin = parseInt(await boDashboardPage.getFormActivityOverviewValue(page, 'abandoned_cart_min'), 10);
+      expect(numAbandonedCartMin).to.equals(12);
+
+      const numAbandonedCartMax = parseInt(await boDashboardPage.getFormActivityOverviewValue(page, 'abandoned_cart_max'), 10);
+      expect(numAbandonedCartMax).to.equals(96);
+    });
+
+    it('should reset the form', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'resetFormActivityOverview', baseContext);
+
+      await boDashboardPage.setFormActivityOverview(page, 30, 30, 24, 48);
+      await boDashboardPage.reloadPage(page);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.eq(boDashboardPage.pageTitle);
+    });
+
+    it('should update the form', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'checkFormActivityOverviewReset', baseContext);
+
+      const isConfigureFormVisible = await boDashboardPage.clickOnConfigureActivityOverviewLink(page);
+      expect(isConfigureFormVisible).to.eq(true);
+
+      const numActiveCarts = parseInt(await boDashboardPage.getFormActivityOverviewValue(page, 'active_cart'), 10);
+      expect(numActiveCarts).to.equals(30);
+
+      const numOnlineVisitor = parseInt(await boDashboardPage.getFormActivityOverviewValue(page, 'online_visitor'), 10);
+      expect(numOnlineVisitor).to.equals(30);
+
+      const numAbandonedCartMin = parseInt(await boDashboardPage.getFormActivityOverviewValue(page, 'abandoned_cart_min'), 10);
+      expect(numAbandonedCartMin).to.equals(24);
+
+      const numAbandonedCartMax = parseInt(await boDashboardPage.getFormActivityOverviewValue(page, 'abandoned_cart_max'), 10);
+      expect(numAbandonedCartMax).to.equals(48);
+    });
   });
 
   // Post-condition : Delete created customer

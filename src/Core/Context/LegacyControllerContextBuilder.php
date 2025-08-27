@@ -29,48 +29,57 @@ declare(strict_types=1);
 namespace PrestaShop\PrestaShop\Core\Context;
 
 use Doctrine\ORM\NoResultException;
-use PrestaShop\PrestaShop\Adapter\ContextStateManager;
+use PrestaShop\PrestaShop\Core\ConfigurationInterface;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
-use PrestaShop\PrestaShop\Core\Exception\InvalidArgumentException;
 use PrestaShop\PrestaShop\Core\Util\Inflector;
 use PrestaShopBundle\Entity\Repository\TabRepository;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Tools;
+use Twig\Environment;
 
-class LegacyControllerContextBuilder implements LegacyContextBuilderInterface
+class LegacyControllerContextBuilder
 {
     private ?string $controllerName = null;
     private ?string $redirectionUrl = null;
-    private ?LegacyControllerContext $_legacyControllerContext = null;
 
     public function __construct(
-        private readonly EmployeeContext $employeeContext,
-        private readonly ContextStateManager $contextStateManager,
-        private readonly array $controllersLockedToAllShopContext,
-        private readonly TabRepository $tabRepository,
-        private readonly ContainerInterface $container,
+        protected readonly EmployeeContext $employeeContext,
+        protected readonly array $controllersLockedToAllShopContext,
+        protected readonly TabRepository $tabRepository,
+        protected readonly ContainerInterface $container,
+        protected readonly ConfigurationInterface $configuration,
+        protected readonly RequestStack $requestStack,
+        protected readonly ShopContext $shopContext,
+        protected readonly LanguageContext $languageContext,
+        protected readonly string $adminFolderName,
+        protected string $psVersion,
+        protected readonly Environment $twig,
     ) {
     }
 
     public function build(): LegacyControllerContext
     {
-        $this->assertArguments();
-
-        $multiShopContext = $this->getMultiShopContext($this->controllerName);
-        $id = $this->getTabId($this->controllerName);
+        $multiShopContext = $this->getMultiShopContext($this->getControllerName());
+        $id = $this->getTabId($this->getControllerName());
         $employeeId = '';
+        $employeeLanguageId = (int) $this->configuration->get('PS_LANG_DEFAULT');
         if ($this->employeeContext->getEmployee()) {
             $employeeId = $this->employeeContext->getEmployee()->getId();
+            if ($this->configuration->get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG')) {
+                $employeeLanguageId = $this->employeeContext->getEmployee()->getLanguageId();
+            }
         }
-        $token = Tools::getAdminToken($this->controllerName . $id . $employeeId);
-        $overrideFolder = Tools::toUnderscoreCase(substr($this->controllerName, 5)) . '/';
+        $token = Tools::getAdminToken($this->getControllerName() . $id . $employeeId);
+        $overrideFolder = Tools::toUnderscoreCase(substr($this->getControllerName(), 5)) . '/';
         $controllerType = 'admin';
-        $className = $this->getClassName($this->controllerName);
-        $table = $this->getTableFromClassName($this->controllerName);
+        $className = $this->getClassName($this->getControllerName());
+        $table = $this->getTableFromClassName($this->getControllerName());
 
-        $legacyControllerContext = new LegacyControllerContext(
+        return new LegacyControllerContext(
             $this->container,
-            $this->controllerName,
+            $this->getControllerName(),
             $controllerType,
             $multiShopContext,
             $className,
@@ -79,28 +88,14 @@ class LegacyControllerContextBuilder implements LegacyContextBuilderInterface
             $overrideFolder,
             $this->getCurrentIndex(),
             $table,
+            $this->requestStack->getCurrentRequest() ?: Request::createFromGlobals(),
+            $employeeLanguageId,
+            $this->shopContext->getPhysicalUri(),
+            $this->adminFolderName,
+            $this->languageContext->isRTL(),
+            $this->psVersion,
+            $this->twig,
         );
-
-        $this->_legacyControllerContext = $legacyControllerContext;
-
-        return $legacyControllerContext;
-    }
-
-    public function buildLegacyContext(): void
-    {
-        // In legacy pages the AdminController class already sets the context's controller, which is a more accurate
-        // candidate than our facade meant for backward compatibility, so we leave it untouched
-        if ($this->contextStateManager->getContext()->controller) {
-            return;
-        }
-
-        $this->assertArguments();
-
-        if (null === $this->_legacyControllerContext) {
-            $this->_legacyControllerContext = $this->build();
-        }
-
-        $this->contextStateManager->setController($this->_legacyControllerContext);
     }
 
     public function setControllerName(string $controllerName): self
@@ -124,14 +119,9 @@ class LegacyControllerContextBuilder implements LegacyContextBuilderInterface
         return $this;
     }
 
-    private function assertArguments(): void
+    private function getControllerName(): string
     {
-        if (null === $this->controllerName) {
-            throw new InvalidArgumentException(sprintf(
-                'Cannot build Controller context as no controllerName has been defined you need to call %s::setControllerName to define it before building the Controller context',
-                self::class
-            ));
-        }
+        return $this->controllerName ?? 'AdminNotFound';
     }
 
     /**

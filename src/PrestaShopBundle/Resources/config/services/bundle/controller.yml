@@ -1,6 +1,9 @@
 services:
   _defaults:
     public: true
+    bind:
+      $projectDir: '%kernel.project_dir%'
+      $adminFolderName: '%prestashop.admin_folder_name%'
 
   # Legacy controllers don't extend the base controller, so we need to inject the container manually.
   PrestaShopBundle\Controller\Api\ApiController:
@@ -98,9 +101,6 @@ services:
     parent: PrestaShopBundle\Controller\Api\ApiController
     public: true
 
-  prestashop.core.admin.multistore:
-    class: PrestaShopBundle\Controller\Admin\MultistoreController
-    public: true
-    lazy: true
-    autoconfigure: true
-    autowire: true
+  PrestaShopBundle\Controller\Admin\SecuredFileReaderController:
+    arguments:
+      $uploadDir: !php/const _PS_UPLOAD_DIR_

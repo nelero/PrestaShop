@@ -1,27 +1,21 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import common tests
-import {installHummingbird, uninstallHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import pages
-import homePage from '@pages/FO/hummingbird/home';
-import cartPage from '@pages/FO/hummingbird/cart';
-import searchResultsPage from '@pages/FO/hummingbird/searchResults';
-import quickViewModal from '@pages/FO/hummingbird/modal/quickView';
-import blockCartModal from '@pages/FO/hummingbird/modal/blockCart';
-
-// Import data
-import Products from '@data/demo/products';
-import {ProductAttribute} from '@data/types/product';
+import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
 import {
+  type BrowserContext,
   type CartProductDetails,
+  dataProducts,
+  foHummingbirdCartPage,
+  foHummingbirdHomePage,
+  foHummingbirdModalBlockCartPage,
+  foHummingbirdModalQuickViewPage,
+  foHummingbirdSearchResultsPage,
+  type Page,
+  type ProductAttribute,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_FO_hummingbird_productPage_quickView_addToCart';
 
@@ -42,10 +36,10 @@ describe('FO - Product page - Quick view : Add to cart', async () => {
   let page: Page;
 
   const checkProductDetails: CartProductDetails = {
-    name: Products.demo_1.name,
-    price: Products.demo_1.finalPrice,
-    cartSubtotal: Products.demo_1.finalPrice,
-    totalTaxIncl: Products.demo_1.finalPrice,
+    name: dataProducts.demo_1.name,
+    price: dataProducts.demo_1.finalPrice,
+    cartSubtotal: dataProducts.demo_1.finalPrice,
+    totalTaxIncl: dataProducts.demo_1.finalPrice,
     quantity: 1,
     cartProductsCount: 1,
     cartShipping: 'Free',
@@ -63,43 +57,43 @@ describe('FO - Product page - Quick view : Add to cart', async () => {
   ];
 
   // Pre-condition : Install Hummingbird
-  installHummingbird(`${baseContext}_preTest`);
+  enableHummingbird(`${baseContext}_preTest`);
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Add to cart', async () => {
     it('should go to FO home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFoToCreateAccount', baseContext);
 
-      await homePage.goToFo(page);
+      await foHummingbirdHomePage.goToFo(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage).to.eq(true);
     });
 
     it('should add first product to cart by quick view', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addToCartByQuickView', baseContext);
 
-      await homePage.quickViewProduct(page, 1);
+      await foHummingbirdHomePage.quickViewProduct(page, 1);
 
-      await quickViewModal.addToCartByQuickView(page);
+      await foHummingbirdModalQuickViewPage.addToCartByQuickView(page);
 
-      const successMessage = await blockCartModal.getBlockCartModalTitle(page);
-      expect(successMessage).to.contains(homePage.successAddToCartMessage);
+      const successMessage = await foHummingbirdModalBlockCartPage.getBlockCartModalTitle(page);
+      expect(successMessage).to.contains(foHummingbirdHomePage.successAddToCartMessage);
     });
 
     it('should check product details from cart modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkProductDetailsInCartModal', baseContext);
 
-      const result = await blockCartModal.getProductDetailsFromBlockCartModal(page);
+      const result = await foHummingbirdModalBlockCartPage.getProductDetailsFromBlockCartModal(page);
       await Promise.all([
         expect(result.name).to.equal(checkProductDetails.name),
         expect(result.price).to.equal(checkProductDetails.price),
@@ -110,7 +104,7 @@ describe('FO - Product page - Quick view : Add to cart', async () => {
         expect(result.totalTaxIncl).to.equal(checkProductDetails.totalTaxIncl),
       ]);
 
-      const productAttributesFromBlockCart = await blockCartModal.getProductAttributesFromBlockCartModal(page);
+      const productAttributesFromBlockCart = await foHummingbirdModalBlockCartPage.getProductAttributesFromBlockCartModal(page);
       await Promise.all([
         expect(productAttributesFromBlockCart.length).to.equal(2),
         expect(productAttributesFromBlockCart[0].name).to.equal(checkProductDetailsProducts[0].name),
@@ -123,27 +117,27 @@ describe('FO - Product page - Quick view : Add to cart', async () => {
     it('should proceed to checkout and check the cart page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkCartPage', baseContext);
 
-      await blockCartModal.proceedToCheckout(page);
+      await foHummingbirdModalBlockCartPage.proceedToCheckout(page);
 
-      const pageTitle = await cartPage.getPageTitle(page);
-      expect(pageTitle).to.equal(cartPage.pageTitle);
+      const pageTitle = await foHummingbirdCartPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foHummingbirdCartPage.pageTitle);
     });
 
     it('should check product details', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkProductDetailsInCartPage', baseContext);
 
-      const result = await cartPage.getProductDetail(page, 1);
+      const result = await foHummingbirdCartPage.getProductDetail(page, 1);
       await Promise.all([
-        expect(result.name).to.equal(Products.demo_1.name),
-        expect(result.regularPrice).to.equal(Products.demo_1.retailPrice),
-        expect(result.price).to.equal(Products.demo_1.finalPrice),
-        expect(result.discountPercentage).to.equal(`-${Products.demo_1.specificPrice.discount}%`),
-        expect(result.image).to.contains(Products.demo_1.coverImage),
+        expect(result.name).to.equal(dataProducts.demo_1.name),
+        expect(result.regularPrice).to.equal(dataProducts.demo_1.retailPrice),
+        expect(result.price).to.equal(dataProducts.demo_1.finalPrice),
+        expect(result.discountPercentage).to.equal(`-${dataProducts.demo_1.specificPrice.discount}%`),
+        expect(result.image).to.contains(dataProducts.demo_1.coverImage),
         expect(result.quantity).to.equal(checkProductDetails.quantity),
         expect(result.totalPrice).to.equal(checkProductDetails.totalTaxIncl),
       ]);
 
-      const cartProductAttributes = await cartPage.getProductAttributes(page, 1);
+      const cartProductAttributes = await foHummingbirdCartPage.getProductAttributes(page, 1);
       await Promise.all([
         expect(cartProductAttributes.length).to.equal(2),
         expect(cartProductAttributes[0].name).to.equal(checkProductDetailsProducts[0].name),
@@ -156,31 +150,31 @@ describe('FO - Product page - Quick view : Add to cart', async () => {
     it('should go to home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToHomePage', baseContext);
 
-      await homePage.goToHomePage(page);
+      await foHummingbirdHomePage.goToHomePage(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage, 'Home page is not displayed').to.eq(true);
     });
 
-    it(`should search for the product ${Products.demo_14.name}`, async function () {
+    it(`should search for the product ${dataProducts.demo_14.name}`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'searchForProductCustomized', baseContext);
 
-      await homePage.searchProduct(page, Products.demo_14.name);
+      await foHummingbirdHomePage.searchProduct(page, dataProducts.demo_14.name);
 
-      const pageTitle = await searchResultsPage.getPageTitle(page);
-      expect(pageTitle).to.equal(searchResultsPage.pageTitle);
+      const pageTitle = await foHummingbirdSearchResultsPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foHummingbirdSearchResultsPage.pageTitle);
     });
 
     it('should quick view the product and check that Add to cart button is disabled', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkAddToCartButton', baseContext);
 
-      await searchResultsPage.quickViewProduct(page, 1);
+      await foHummingbirdSearchResultsPage.quickViewProduct(page, 1);
 
-      const isDisabled = await quickViewModal.isAddToCartButtonDisabled(page);
+      const isDisabled = await foHummingbirdModalQuickViewPage.isAddToCartButtonDisabled(page);
       expect(isDisabled).to.eq(true);
     });
   });
 
   // Post-condition : Uninstall Hummingbird
-  uninstallHummingbird(`${baseContext}_postTest`);
+  disableHummingbird(`${baseContext}_postTest`);
 });

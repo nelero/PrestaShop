@@ -1,12 +1,16 @@
 import 'module-alias/register';
 
 // Import utils
-import helper from '@utils/helpers';
-import files from '@utils/files';
 import urlsList from '@tools/urls';
 
 import {expect} from 'chai';
-import {Browser, BrowserContext, Page} from 'playwright';
+import {
+  type Browser,
+  type BrowserContext,
+  type Page,
+  utilsFile,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 // Interfaces
 interface outputEntryError{
@@ -61,14 +65,14 @@ let browserContext: BrowserContext;
 
 describe('Crawl every page for defects and issues', async () => {
   before(async () => {
-    await files.createDirectory(reportPath);
+    await utilsFile.createDirectory(reportPath);
     // Create report dir
-    filename = await files.generateReportFilename();
+    filename = await utilsFile.generateReportFilename();
 
     // Open browser
-    browser = await helper.createBrowser();
-    browserContext = await helper.createBrowserContext(browser);
-    page = await helper.newTab(browserContext);
+    browser = await utilsPlaywright.createBrowser();
+    browserContext = await utilsPlaywright.createBrowserContext(browser);
+    page = await utilsPlaywright.newTab(browserContext);
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'fr-FR',
     });
@@ -108,10 +112,10 @@ describe('Crawl every page for defects and issues', async () => {
   });
 
   after(async () => {
-    await helper.closeBrowser(browser);
+    await utilsPlaywright.closeBrowser(browser);
 
     output.endDate = new Date().toISOString();
-    await files.createFile(reportPath, `${filename}.json`, JSON.stringify(output));
+    await utilsFile.createFile(reportPath, `${filename}.json`, JSON.stringify(output));
   });
 
   urlsList.forEach((section) => {

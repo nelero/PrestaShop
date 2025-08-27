@@ -31,8 +31,8 @@ namespace PrestaShopBundle\Twig\Component;
 use Context;
 use Media;
 use PrestaShop\PrestaShop\Adapter\Configuration;
-use PrestaShop\PrestaShop\Adapter\LegacyContext;
 use PrestaShop\PrestaShop\Core\Context\CountryContext;
+use PrestaShop\PrestaShop\Core\Context\CurrencyContext;
 use PrestaShop\PrestaShop\Core\Context\LanguageContext;
 use PrestaShop\PrestaShop\Core\Context\LegacyControllerContext;
 use PrestaShop\PrestaShop\Core\Context\ShopContext;
@@ -41,6 +41,7 @@ use PrestaShop\PrestaShop\Core\Localization\Locale;
 use PrestaShopBundle\Twig\Layout\MenuBuilder;
 use PrestaShopBundle\Twig\Layout\TemplateVariables;
 use Shop;
+use Symfony\Component\Routing\RouterInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Symfony\UX\TwigComponent\Attribute\AsTwigComponent;
 use Tools;
@@ -51,7 +52,6 @@ class HeadTag
     protected string $metaTitle;
 
     public function __construct(
-        protected readonly LegacyContext $context,
         protected readonly Configuration $configuration,
         protected readonly MenuBuilder $menuBuilder,
         protected readonly TranslatorInterface $translator,
@@ -61,7 +61,9 @@ class HeadTag
         protected readonly ShopContext $shopContext,
         protected readonly LanguageContext $languageContext,
         protected readonly LanguageContext $defaultLanguageContext,
+        protected readonly CurrencyContext $currencyContext,
         protected readonly LegacyControllerContext $legacyControllerContext,
+        protected readonly RouterInterface $router,
     ) {
     }
 
@@ -92,13 +94,13 @@ class HeadTag
     {
         return array_merge(
             [
-                'baseDir' => $this->context->getContext()->shop->getBaseURI(),
-                'baseAdminDir' => $this->context->getContext()->shop->getBaseURI() . basename(_PS_ADMIN_DIR_) . '/',
+                'baseDir' => $this->shopContext->getBaseURI(),
+                'baseAdminDir' => $this->shopContext->getBaseURI() . basename(_PS_ADMIN_DIR_) . '/',
                 'currency' => [
-                    'iso_code' => $this->context->getContext()->currency->iso_code,
-                    'sign' => $this->context->getContext()->currency->symbol,
-                    'name' => $this->context->getContext()->currency->name,
-                    'format' => $this->context->getContext()->currency->format,
+                    'iso_code' => $this->currencyContext->getIsoCode(),
+                    'sign' => $this->currencyContext->getSymbol(),
+                    'name' => $this->currencyContext->getName(),
+                    'format' => $this->currencyContext->getPattern(),
                 ],
                 'currency_specifications' => $this->preparePriceSpecifications(),
                 'number_specifications' => $this->prepareNumberSpecifications(),
@@ -108,6 +110,8 @@ class HeadTag
                 'show_new_orders' => $this->configuration->get('PS_SHOW_NEW_ORDERS'),
                 'show_new_customers' => $this->configuration->get('PS_SHOW_NEW_CUSTOMERS'),
                 'show_new_messages' => $this->configuration->get('PS_SHOW_NEW_MESSAGES'),
+                // Variable used in admin.js legacy javascript file
+                'changeFormLanguageUrl' => $this->router->generate('admin_employees_change_form_language'),
             ],
             Media::getJsDef(),
         );
@@ -211,12 +215,8 @@ class HeadTag
      */
     protected function preparePriceSpecifications(): array
     {
-        /** @var Context $context */
-        $context = $this->context->getContext();
-        /* @var Currency */
-        $currency = $context->currency;
         /* @var PriceSpecification */
-        $priceSpecification = $this->languageContext->getPriceSpecification($currency->iso_code);
+        $priceSpecification = $this->languageContext->getPriceSpecification($this->currencyContext->getIsoCode());
 
         return array_merge(
             ['symbol' => $priceSpecification->getSymbolsByNumberingSystem(Locale::NUMBERING_SYSTEM_LATIN)->toArray()],
@@ -229,8 +229,6 @@ class HeadTag
      */
     protected function prepareNumberSpecifications(): array
     {
-        /** @var Context $context */
-        $context = $this->context->getContext();
         /* @var NumberSpecification */
         $numberSpecification = $this->languageContext->getNumberSpecification();
 

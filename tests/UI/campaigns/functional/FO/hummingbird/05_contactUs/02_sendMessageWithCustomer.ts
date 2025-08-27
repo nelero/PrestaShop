@@ -1,40 +1,30 @@
-// Import utils
-import files from '@utils/files';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import mailHelper from '@utils/mailHelper';
+import {expect} from 'chai';
 
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
 import {setupSmtpConfigTest, resetSmtpConfigTest} from '@commonTests/BO/advancedParameters/smtp';
-import {installHummingbird, uninstallHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import pages
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import customerServicePage from '@pages/BO/customerService/customerService';
-import {moduleManager} from '@pages/BO/modules/moduleManager';
-import contactFormPage from '@pages/BO/modules/contactForm';
-
-// Import FO pages
-import contactUsPage from '@pages/FO/hummingbird/contactUs';
-import homePage from '@pages/FO/hummingbird/home';
-import loginPage from '@pages/FO/hummingbird/login';
-
-// Import data
-import Orders from '@data/demo/orders';
-import MessageData from '@data/faker/message';
-import MailDevEmail from '@data/types/maildevEmail';
-import Modules from '@data/demo/modules';
+import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
 import {
-  // Import data
+  boCustomerServicePage,
+  boDashboardPage,
+  boLoginPage,
+  boModuleManagerPage,
+  type BrowserContext,
   dataCustomers,
+  dataModules,
+  dataOrders,
+  FakerContactMessage,
+  foHummingbirdContactUsPage,
+  foHummingbirdHomePage,
+  foHummingbirdLoginPage,
+  type MailDev,
+  type MailDevEmail,
+  modContactFormBoMain,
+  type Page,
+  utilsFile,
+  utilsMail,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
-import MailDev from 'maildev';
 
 const baseContext: string = 'functional_FO_hummingbird_contactUs_sendMessageWithCustomer';
 
@@ -60,30 +50,30 @@ describe('FO - Contact us : Send message from contact us page with customer logg
   let newMail: MailDevEmail;
   let mailListener: MailDev;
 
-  const contactUsData: MessageData = new MessageData({
+  const contactUsData: FakerContactMessage = new FakerContactMessage({
     firstName: dataCustomers.johnDoe.firstName,
     lastName: dataCustomers.johnDoe.lastName,
     subject: 'Customer service',
     emailAddress: dataCustomers.johnDoe.email,
-    reference: Orders.firstOrder.reference,
+    reference: dataOrders.order_1.reference,
   });
 
   // Pre-Condition : Setup config SMTP
   setupSmtpConfigTest(`${baseContext}_preTest_1`);
 
   // Pre-condition : Install Hummingbird
-  installHummingbird(`${baseContext}_preTest_2`);
+  enableHummingbird(`${baseContext}_preTest_2`);
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
-    await files.createFile('.', `${contactUsData.fileName}.txt`, 'new filename');
+    await utilsFile.createFile('.', `${contactUsData.fileName}.txt`, 'new filename');
 
     // Start listening to maildev server
-    mailListener = mailHelper.createMailListener();
-    mailHelper.startListener(mailListener);
+    mailListener = utilsMail.createMailListener();
+    utilsMail.startListener(mailListener);
 
     // Handle every new email
     mailListener.on('new', (email: MailDevEmail) => {
@@ -92,67 +82,76 @@ describe('FO - Contact us : Send message from contact us page with customer logg
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
-    await files.deleteFile(`${contactUsData.fileName}.txt`);
+    await utilsFile.deleteFile(`${contactUsData.fileName}.txt`);
 
     // Stop listening to maildev server
-    mailHelper.stopListener(mailListener);
+    utilsMail.stopListener(mailListener);
   });
 
   describe('PRE-TEST: Configure Contact form module', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Modules > Module Manager\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToModuleManagerPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.modulesParentLink,
-        dashboardPage.moduleManagerLink,
+        boDashboardPage.modulesParentLink,
+        boDashboardPage.moduleManagerLink,
       );
-      await moduleManager.closeSfToolBar(page);
+      await boModuleManagerPage.closeSfToolBar(page);
 
-      const pageTitle = await moduleManager.getPageTitle(page);
-      expect(pageTitle).to.contains(moduleManager.pageTitle);
+      const pageTitle = await boModuleManagerPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boModuleManagerPage.pageTitle);
     });
 
-    it(`should search the module ${Modules.contactForm.name}`, async function () {
+    it(`should search the module ${dataModules.contactForm.name}`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'searchModule', baseContext);
 
-      const isModuleVisible = await moduleManager.searchModule(page, Modules.contactForm);
+      const isModuleVisible = await boModuleManagerPage.searchModule(page, dataModules.contactForm);
       expect(isModuleVisible).to.equal(true);
     });
 
-    it(`should go to the configuration page of the module '${Modules.contactForm.name}'`, async function () {
+    it(`should go to the configuration page of the module '${dataModules.contactForm.name}'`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToConfigurationPage', baseContext);
 
-      await moduleManager.goToConfigurationPage(page, Modules.contactForm.tag);
+      await boModuleManagerPage.goToConfigurationPage(page, dataModules.contactForm.tag);
 
-      const pageTitle = await contactFormPage.getPageSubtitle(page);
-      expect(pageTitle).to.equal(contactFormPage.pageTitle);
+      const pageTitle = await modContactFormBoMain.getPageSubtitle(page);
+      expect(pageTitle).to.equal(modContactFormBoMain.pageTitle);
     });
 
     it('should enable Send confirmation email to your customers', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'enableSendConfirmationEmail', baseContext);
 
-      const successMessage = await contactFormPage.setSendConfirmationEmail(page, true);
-      expect(successMessage).to.contains(contactFormPage.successfulUpdateMessage);
+      const successMessage = await modContactFormBoMain.setSendConfirmationEmail(page, true);
+      expect(successMessage).to.contains(modContactFormBoMain.successfulUpdateMessage);
     });
 
     it('should enable Receive customers\' messages by email', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'enableReceiveMessagesByEmail', baseContext);
 
-      const successMessage = await contactFormPage.setReceiveCustomersMessageByEmail(page, true);
-      expect(successMessage).to.contains(contactFormPage.successfulUpdateMessage);
+      const successMessage = await modContactFormBoMain.setReceiveCustomersMessageByEmail(page, true);
+      expect(successMessage).to.contains(modContactFormBoMain.successfulUpdateMessage);
     });
 
     it('should logout from BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'logOutBO', baseContext);
 
-      await loginCommon.logoutBO(this, page);
+      await boDashboardPage.logoutBO(page);
+
+      const pageTitle = await boLoginPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boLoginPage.pageTitle);
     });
   });
 
@@ -160,27 +159,27 @@ describe('FO - Contact us : Send message from contact us page with customer logg
     it('should open the shop page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'openShop', baseContext);
 
-      await homePage.goTo(page, global.FO.URL);
+      await foHummingbirdHomePage.goTo(page, global.FO.URL);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage).to.eq(true);
     });
 
     it('should go to login page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToLoginPageFo', baseContext);
 
-      await homePage.goToLoginPage(page);
+      await foHummingbirdHomePage.goToLoginPage(page);
 
-      const pageTitle = await loginPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open FO login page').to.contains(loginPage.pageTitle);
+      const pageTitle = await foHummingbirdLoginPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open FO login page').to.contains(foHummingbirdLoginPage.pageTitle);
     });
 
     it('should sign in with default customer', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'sighInFo', baseContext);
 
-      await loginPage.customerLogin(page, dataCustomers.johnDoe);
+      await foHummingbirdLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-      const isCustomerConnected = await loginPage.isCustomerConnected(page);
+      const isCustomerConnected = await foHummingbirdLoginPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is not connected').to.eq(true);
     });
 
@@ -188,79 +187,88 @@ describe('FO - Contact us : Send message from contact us page with customer logg
       await testContext.addContextItem(this, 'testIdentifier', 'goOnContactPage', baseContext);
 
       // Go to contact us page
-      await loginPage.goToFooterLink(page, 'Contact us');
+      await foHummingbirdLoginPage.goToFooterLink(page, 'Contact us');
 
-      const pageTitle = await contactUsPage.getPageTitle(page);
-      expect(pageTitle).to.equal(contactUsPage.pageTitle);
+      const pageTitle = await foHummingbirdContactUsPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foHummingbirdContactUsPage.pageTitle);
     });
 
     it('should send message to customer service', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'sendMessage', baseContext);
 
-      await contactUsPage.sendMessage(page, contactUsData, `${contactUsData.fileName}.txt`);
+      await foHummingbirdContactUsPage.sendMessage(page, contactUsData, `${contactUsData.fileName}.txt`);
 
-      const validationMessage = await contactUsPage.getAlertSuccess(page);
-      expect(validationMessage).to.equal(contactUsPage.validationMessage);
+      const validationMessage = await foHummingbirdContactUsPage.getAlertSuccess(page);
+      expect(validationMessage).to.equal(foHummingbirdContactUsPage.validationMessage);
     });
 
     it('should check that the confirmation mail is in mailbox', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMail', baseContext);
 
-      expect(newMail.subject).to.contains(`[${global.INSTALL.SHOP_NAME}] Your message has been correctly sent`);
+      // Translated message looks like this 'Your message no. ct%thread_id% has been correctly sent (thread ID tc%thread_token%)'
+      // so we check the two parts that are not dynamic
+      expect(newMail.subject).to.contains(`[${global.INSTALL.SHOP_NAME}] Your message`);
+      expect(newMail.subject).to.contains('has been correctly sent');
     });
   });
 
   describe('BO - Check in Customer Service Page the received message and delete it', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to customer service page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrderMessagesPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.customerServiceParentLink,
-        dashboardPage.customerServiceLink,
+        boDashboardPage.customerServiceParentLink,
+        boDashboardPage.customerServiceLink,
       );
 
-      const pageTitle = await customerServicePage.getPageTitle(page);
-      expect(pageTitle).to.contains(customerServicePage.pageTitle);
+      const pageTitle = await boCustomerServicePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerServicePage.pageTitle);
     });
 
     it('should check customer name', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkCustomerName', baseContext);
 
-      const email = await customerServicePage.getTextColumn(page, 1, 'customer');
+      const email = await boCustomerServicePage.getTextColumn(page, 1, 'customer');
       expect(email).to.contain(`${contactUsData.firstName} ${contactUsData.lastName}`);
     });
 
     it('should check customer email', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkCustomerEmail', baseContext);
 
-      const email = await customerServicePage.getTextColumn(page, 1, 'a!email');
+      const email = await boCustomerServicePage.getTextColumn(page, 1, 'a!email');
       expect(email).to.contain(contactUsData.emailAddress);
     });
 
     it('should check message type', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMessageType', baseContext);
 
-      const subject = await customerServicePage.getTextColumn(page, 1, 'cl!id_contact');
+      const subject = await boCustomerServicePage.getTextColumn(page, 1, 'cl!id_contact');
       expect(subject).to.contain(contactUsData.subject);
     });
 
     it('should check message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMessage', baseContext);
 
-      const message = await customerServicePage.getTextColumn(page, 1, 'message');
+      const message = await boCustomerServicePage.getTextColumn(page, 1, 'message');
       expect(message).to.contain(contactUsData.message);
     });
 
     it('should delete the message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteMessage', baseContext);
 
-      const textResult = await customerServicePage.deleteMessage(page, 1);
-      expect(textResult).to.contains(customerServicePage.successfulDeleteMessage);
+      const textResult = await boCustomerServicePage.deleteMessage(page, 1);
+      expect(textResult).to.contains(boCustomerServicePage.successfulDeleteMessage);
     });
   });
 
@@ -269,45 +277,45 @@ describe('FO - Contact us : Send message from contact us page with customer logg
     it('should go to \'Modules > Module Manager\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToModuleManagerPage2', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.modulesParentLink,
-        dashboardPage.moduleManagerLink,
+        boDashboardPage.modulesParentLink,
+        boDashboardPage.moduleManagerLink,
       );
-      await moduleManager.closeSfToolBar(page);
+      await boModuleManagerPage.closeSfToolBar(page);
 
-      const pageTitle = await moduleManager.getPageTitle(page);
-      expect(pageTitle).to.contains(moduleManager.pageTitle);
+      const pageTitle = await boModuleManagerPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boModuleManagerPage.pageTitle);
     });
 
-    it(`should search the module ${Modules.contactForm.name}`, async function () {
+    it(`should search the module ${dataModules.contactForm.name}`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'searchModule2', baseContext);
 
-      const isModuleVisible = await moduleManager.searchModule(page, Modules.contactForm);
+      const isModuleVisible = await boModuleManagerPage.searchModule(page, dataModules.contactForm);
       expect(isModuleVisible).to.equal(true);
     });
 
-    it(`should go to the configuration page of the module '${Modules.contactForm.name}'`, async function () {
+    it(`should go to the configuration page of the module '${dataModules.contactForm.name}'`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToConfigurationPage2', baseContext);
 
-      await moduleManager.goToConfigurationPage(page, Modules.contactForm.tag);
+      await boModuleManagerPage.goToConfigurationPage(page, dataModules.contactForm.tag);
 
-      const pageTitle = await contactFormPage.getPageSubtitle(page);
-      expect(pageTitle).to.equal(contactFormPage.pageTitle);
+      const pageTitle = await modContactFormBoMain.getPageSubtitle(page);
+      expect(pageTitle).to.equal(modContactFormBoMain.pageTitle);
     });
 
     it('should disable Send confirmation email to your customers', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'disableSendConfirmationEmail', baseContext);
 
-      const successMessage = await contactFormPage.setSendConfirmationEmail(page, false);
-      expect(successMessage).to.contains(contactFormPage.successfulUpdateMessage);
+      const successMessage = await modContactFormBoMain.setSendConfirmationEmail(page, false);
+      expect(successMessage).to.contains(modContactFormBoMain.successfulUpdateMessage);
     });
 
     it('should disable Receive customers\' messages by email', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'disableReceiveMessagesByEmail', baseContext);
 
-      const successMessage = await contactFormPage.setReceiveCustomersMessageByEmail(page, false);
-      expect(successMessage).to.contains(contactFormPage.successfulUpdateMessage);
+      const successMessage = await modContactFormBoMain.setReceiveCustomersMessageByEmail(page, false);
+      expect(successMessage).to.contains(modContactFormBoMain.successfulUpdateMessage);
     });
   });
 
@@ -315,5 +323,5 @@ describe('FO - Contact us : Send message from contact us page with customer logg
   resetSmtpConfigTest(`${baseContext}_postTest_1`);
 
   // Post-condition : Uninstall Hummingbird
-  uninstallHummingbird(`${baseContext}_postTest_2`);
+  disableHummingbird(`${baseContext}_postTest_2`);
 });

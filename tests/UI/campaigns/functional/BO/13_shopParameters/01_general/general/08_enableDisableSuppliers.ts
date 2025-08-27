@@ -1,22 +1,18 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import generalPage from '@pages/BO/shopParameters/general';
-import brandsPage from '@pages/BO/catalog/brands';
-import suppliersPage from '@pages/BO/catalog/suppliers';
-// Import FO pages
-import {homePage} from '@pages/FO/classic/home';
-import {siteMapPage} from '@pages/FO/classic/siteMap';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+
+import {
+  boBrandsPage,
+  boDashboardPage,
+  boLoginPage,
+  boShopParametersPage,
+  boSuppliersPage,
+  type BrowserContext,
+  foClassicHomePage,
+  foClassicSitemapPage,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_shopParameters_general_general_enableDisableSuppliers';
 
@@ -31,16 +27,22 @@ describe('BO - Shop Parameters - General : Enable/Disable display suppliers', as
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   const tests = [
@@ -53,51 +55,51 @@ describe('BO - Shop Parameters - General : Enable/Disable display suppliers', as
       it('should go to \'Shop parameters > General\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `goToGeneralPage_${index}`, baseContext);
 
-        await dashboardPage.goToSubMenu(
+        await boDashboardPage.goToSubMenu(
           page,
-          dashboardPage.shopParametersParentLink,
-          dashboardPage.shopParametersGeneralLink,
+          boDashboardPage.shopParametersParentLink,
+          boDashboardPage.shopParametersGeneralLink,
         );
-        await generalPage.closeSfToolBar(page);
+        await boShopParametersPage.closeSfToolBar(page);
 
-        const pageTitle = await generalPage.getPageTitle(page);
-        expect(pageTitle).to.contains(generalPage.pageTitle);
+        const pageTitle = await boShopParametersPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boShopParametersPage.pageTitle);
       });
 
       it(`should ${test.args.action} display suppliers`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.action}DisplaySuppliers`, baseContext);
 
-        const result = await generalPage.setDisplaySuppliers(page, test.args.exist);
-        expect(result).to.contains(generalPage.successfulUpdateMessage);
+        const result = await boShopParametersPage.setDisplaySuppliers(page, test.args.exist);
+        expect(result).to.contains(boShopParametersPage.successfulUpdateMessage);
       });
 
       if (test.args.action === 'Disable') {
         it('should go to \'Brands & Suppliers\' page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', `goToBrandsPage_${index}`, baseContext);
 
-          await generalPage.goToSubMenu(
+          await boShopParametersPage.goToSubMenu(
             page,
-            generalPage.catalogParentLink,
-            generalPage.brandsAndSuppliersLink,
+            boShopParametersPage.catalogParentLink,
+            boShopParametersPage.brandsAndSuppliersLink,
           );
 
-          const pageTitle = await brandsPage.getPageTitle(page);
-          expect(pageTitle).to.contains(brandsPage.pageTitle);
+          const pageTitle = await boBrandsPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boBrandsPage.pageTitle);
         });
 
         it('should go to \'Suppliers\' tab', async function () {
           await testContext.addContextItem(this, 'testIdentifier', `goToSuppliersTab_${index}`, baseContext);
 
-          await brandsPage.goToSubTabSuppliers(page);
+          await boBrandsPage.goToSubTabSuppliers(page);
 
-          const pageTitle = await suppliersPage.getPageTitle(page);
-          expect(pageTitle).to.contains(suppliersPage.pageTitle);
+          const pageTitle = await boSuppliersPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boSuppliersPage.pageTitle);
         });
 
         it(`should check that the message alert contains '${test.args.action}'`, async function () {
           await testContext.addContextItem(this, 'testIdentifier', `checkAlertContains_${test.args.action}`, baseContext);
 
-          const text = await suppliersPage.getAlertInfoBlockParagraphContent(page);
+          const text = await boSuppliersPage.getAlertInfoBlockParagraphContent(page);
           expect(text).to.contains(test.args.action.toLowerCase());
         });
       }
@@ -106,23 +108,23 @@ describe('BO - Shop Parameters - General : Enable/Disable display suppliers', as
         await testContext.addContextItem(this, 'testIdentifier', `goToFO_${test.args.action}`, baseContext);
 
         // View shop
-        page = await suppliersPage.viewMyShop(page);
+        page = await boSuppliersPage.viewMyShop(page);
         // Change shop language
-        await homePage.changeLanguage(page, 'en');
+        await foClassicHomePage.changeLanguage(page, 'en');
 
-        const isHomePage = await homePage.isHomePage(page);
+        const isHomePage = await foClassicHomePage.isHomePage(page);
         expect(isHomePage).to.eq(true);
       });
 
       it('should verify the existence of the suppliers page link', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkSuppliersPage_${test.args.action}`, baseContext);
 
-        await homePage.goToFooterLink(page, 'Sitemap');
+        await foClassicHomePage.goToFooterLink(page, 'Sitemap');
 
-        const pageTitle = await siteMapPage.getPageTitle(page);
-        expect(pageTitle).to.equal(siteMapPage.pageTitle);
+        const pageTitle = await foClassicSitemapPage.getPageTitle(page);
+        expect(pageTitle).to.equal(foClassicSitemapPage.pageTitle);
 
-        const exist = await siteMapPage.isSuppliersLinkVisible(page);
+        const exist = await foClassicSitemapPage.isSuppliersLinkVisible(page);
         expect(exist).to.be.equal(test.args.exist);
       });
 
@@ -130,10 +132,10 @@ describe('BO - Shop Parameters - General : Enable/Disable display suppliers', as
         it('should go back to BO', async function () {
           await testContext.addContextItem(this, 'testIdentifier', `goBackToBo_${test.args.action}`, baseContext);
 
-          page = await siteMapPage.closePage(browserContext, page, 0);
+          page = await foClassicSitemapPage.closePage(browserContext, page, 0);
 
-          const pageTitle = await generalPage.getPageTitle(page);
-          expect(pageTitle).to.contains(generalPage.pageTitle);
+          const pageTitle = await boShopParametersPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boShopParametersPage.pageTitle);
         });
       }
     });

@@ -24,7 +24,7 @@
  *}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale={(isset($viewport_scale)) ? $viewport_scale : '1'}">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="robots" content="NOFOLLOW, NOINDEX">
 
 <link rel="icon" type="image/x-icon" href="{$img_dir}favicon.ico" />
@@ -58,7 +58,7 @@
     var from_msg = '{l s='From:' js=1 d='Admin.Global'} ';
     var see_order_msg = '{l s='View this order' js=1 d='Admin.Orderscustomers.Feature'}';
     var new_customer_msg = '{l s='A new customer registered on your store.' js=1 d='Admin.Navigation.Header'}';
-    var customer_name_msg = '{l s='Customer name:' js=1 d='Admin.Navigation.Header'} ';
+    var customer_name_msg = '{l s='Registered on:' js=1 d='Admin.Navigation.Header'} ';
     var new_msg = '{l s='A new message was posted on your store.' js=1 d='Admin.Navigation.Header'}';
     var see_msg = '{l s='Read this message' js=1 d='Admin.Navigation.Header'}';
     var token = '{$token|addslashes}';

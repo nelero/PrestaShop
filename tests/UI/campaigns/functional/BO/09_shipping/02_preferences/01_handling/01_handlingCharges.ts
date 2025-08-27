@@ -1,36 +1,28 @@
-// Import utils
-import files from '@utils/files';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import carriersPage from '@pages/BO/shipping/carriers';
-import addCarrierPage from '@pages/BO/shipping/carriers/add';
-import preferencesPage from '@pages/BO/shipping/preferences';
-import customerSettingsPage from '@pages/BO/shopParameters/customerSettings';
-import groupsPage from '@pages/BO/shopParameters/customerSettings/groups';
-import addGroupPage from '@pages/BO/shopParameters/customerSettings/groups/add';
-// Import FO pages
-import {cartPage} from '@pages/FO/classic/cart';
-import {checkoutPage} from '@pages/FO/classic/checkout';
-import {homePage} from '@pages/FO/classic/home';
-import {loginPage as foLoginPage} from '@pages/FO/classic/login';
-import {productPage} from '@pages/FO/classic/product';
+import {expect} from 'chai';
 
 import {
-  // Import data
+  boCarriersPage,
+  boCarriersCreatePage,
+  boCustomerGroupsPage,
+  boCustomerGroupsCreatePage,
+  boCustomerSettingsPage,
+  boDashboardPage,
+  boLoginPage,
+  boShippingPreferencesPage,
+  type BrowserContext,
   dataCustomers,
   dataGroups,
   FakerCarrier,
+  foClassicCartPage,
+  foClassicCheckoutPage,
+  foClassicHomePage,
+  foClassicLoginPage,
+  foClassicProductPage,
+  type Page,
+  utilsFile,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_shipping_preferences_handling_handlingCharges';
 
@@ -49,6 +41,7 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
   let page: Page;
   let newCarrierID: number = 0;
 
+  const createCarrierPrice: number = 5;
   const createCarrierData: FakerCarrier = new FakerCarrier({
     freeShipping: false,
     handlingCosts: true,
@@ -59,7 +52,7 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
         zones: [
           {
             zone: 'all',
-            price: 5,
+            price: createCarrierPrice,
           },
         ],
       },
@@ -76,22 +69,28 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
     // Create image
-    await files.generateImage(`${createCarrierData.name}.jpg`);
+    await utilsFile.generateImage(`${createCarrierData.name}.jpg`);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
 
     // Delete image
-    await files.deleteFile(`${createCarrierData.name}.jpg`);
+    await utilsFile.deleteFile(`${createCarrierData.name}.jpg`);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   // 1 - Choose display tax excluded in FO
@@ -99,49 +98,49 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
     it('should go to \'Shop parameters > Customer Settings\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCustomerSettingsPage1', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.shopParametersParentLink,
-        dashboardPage.customerSettingsLink,
+        boDashboardPage.shopParametersParentLink,
+        boDashboardPage.customerSettingsLink,
       );
-      await customerSettingsPage.closeSfToolBar(page);
+      await boCustomerSettingsPage.closeSfToolBar(page);
 
-      const pageTitle = await customerSettingsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(customerSettingsPage.pageTitle);
+      const pageTitle = await boCustomerSettingsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerSettingsPage.pageTitle);
     });
 
     it('should go to Groups page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToGroupsPage1', baseContext);
 
-      await customerSettingsPage.goToGroupsPage(page);
+      await boCustomerSettingsPage.goToGroupsPage(page);
 
-      const pageTitle = await groupsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(groupsPage.pageTitle);
+      const pageTitle = await boCustomerGroupsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerGroupsPage.pageTitle);
     });
 
     it(`should filter by '${dataGroups.customer.name}'`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterByGroupName1', baseContext);
 
-      await groupsPage.filterTable(page, 'input', 'b!name', dataGroups.customer.name);
+      await boCustomerGroupsPage.filterTable(page, 'input', 'b!name', dataGroups.customer.name);
 
-      const textColumn = await groupsPage.getTextColumn(page, 1, 'b!name');
+      const textColumn = await boCustomerGroupsPage.getTextColumn(page, 1, 'b!name');
       expect(textColumn).to.contains(dataGroups.customer.name);
     });
 
     it('should go to edit group page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToEditGroupPage1', baseContext);
 
-      await groupsPage.gotoEditGroupPage(page, 1);
+      await boCustomerGroupsPage.gotoEditGroupPage(page, 1);
 
-      const pageTitle = await addGroupPage.getPageTitle(page);
-      expect(pageTitle).to.contains(addGroupPage.pageTitleEdit);
+      const pageTitle = await boCustomerGroupsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerGroupsCreatePage.pageTitleEdit);
     });
 
     it('should update group by choosing \'Tax excluded\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateGroup1', baseContext);
 
-      const textResult = await addGroupPage.setPriceDisplayMethod(page, priceDisplayMethod[0]);
-      expect(textResult).to.contains(groupsPage.successfulUpdateMessage);
+      const textResult = await boCustomerGroupsCreatePage.setPriceDisplayMethod(page, priceDisplayMethod[0]);
+      expect(textResult).to.contains(boCustomerGroupsPage.successfulUpdateMessage);
     });
   });
 
@@ -150,42 +149,55 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
     it('should go to \'Shipping > Carriers\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCarriersPage1', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.shippingLink,
-        dashboardPage.carriersLink,
+        boDashboardPage.shippingLink,
+        boDashboardPage.carriersLink,
       );
 
-      const pageTitle = await carriersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(carriersPage.pageTitle);
+      const pageTitle = await boCarriersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCarriersPage.pageTitle);
     });
 
     it('should go to add new carrier page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAddCarrierPage', baseContext);
 
-      await carriersPage.goToAddNewCarrierPage(page);
+      await boCarriersPage.goToAddNewCarrierPage(page);
 
-      const pageTitle = await addCarrierPage.getPageTitle(page);
-      expect(pageTitle).to.contains(addCarrierPage.pageTitleCreate);
+      const pageTitle = await boCarriersCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCarriersCreatePage.pageTitleCreate);
     });
 
     it('should create carrier and check result', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createCarrier', baseContext);
 
-      const textResult = await addCarrierPage.createEditCarrier(page, createCarrierData);
-      expect(textResult).to.contains(carriersPage.successfulCreationMessage);
+      const textResult = await boCarriersCreatePage.createEditCarrier(page, createCarrierData);
+      expect(textResult).to.contains(boCarriersPage.successfulCreationMessage);
+    });
+
+    it('should return to carriers page', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'returnToCarriers', baseContext);
+
+      await boDashboardPage.goToSubMenu(
+        page,
+        boDashboardPage.shippingLink,
+        boDashboardPage.carriersLink,
+      );
+
+      const pageTitle = await boCarriersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCarriersPage.pageTitle);
     });
 
     it('should filter list by name and get the new carrier ID', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterToCheckNewCarrier', baseContext);
 
-      await carriersPage.resetFilter(page);
+      await boCarriersPage.resetFilter(page);
 
-      await carriersPage.filterTable(page, 'input', 'name', createCarrierData.name);
+      await boCarriersPage.filterTable(page, 'input', 'name', createCarrierData.name);
 
-      newCarrierID = parseInt(await carriersPage.getTextColumn(page, 1, 'id_carrier'), 10);
+      newCarrierID = parseInt(await boCarriersPage.getTextColumn(page, 1, 'id_carrier'), 10);
 
-      const name = await carriersPage.getTextColumn(page, 1, 'name');
+      const name = await boCarriersPage.getTextColumn(page, 1, 'name');
       expect(name).to.contains(createCarrierData.name);
     });
   });
@@ -196,29 +208,29 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
       await testContext.addContextItem(this, 'testIdentifier', 'firstViewMyShop1', baseContext);
 
       // Click on view my shop
-      page = await carriersPage.viewMyShop(page);
+      page = await boCarriersPage.viewMyShop(page);
       // Change language
-      await homePage.changeLanguage(page, 'en');
+      await foClassicHomePage.changeLanguage(page, 'en');
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Home page is not displayed').to.eq(true);
     });
 
     it('should go to login page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'firstGoToLoginPageFO1', baseContext);
 
-      await homePage.goToLoginPage(page);
+      await foClassicHomePage.goToLoginPage(page);
 
-      const pageTitle = await foLoginPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open FO login page').to.contains(foLoginPage.pageTitle);
+      const pageTitle = await foClassicLoginPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open FO login page').to.contains(foClassicLoginPage.pageTitle);
     });
 
     it('should sign in with default customer', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'firstSighInFO1', baseContext);
 
-      await foLoginPage.customerLogin(page, dataCustomers.johnDoe);
+      await foClassicLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-      const isCustomerConnected = await foLoginPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicLoginPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is not connected').to.eq(true);
     });
 
@@ -226,35 +238,35 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
       await testContext.addContextItem(this, 'testIdentifier', 'firstCreateOrder', baseContext);
 
       // Go to home page
-      await foLoginPage.goToHomePage(page);
+      await foClassicLoginPage.goToHomePage(page);
       // Go to the first product page
-      await homePage.goToProductPage(page, 1);
+      await foClassicHomePage.goToProductPage(page, 1);
       // Add the created product to the cart
-      await productPage.addProductToTheCart(page);
+      await foClassicProductPage.addProductToTheCart(page);
       // Proceed to checkout the shopping cart
-      await cartPage.clickOnProceedToCheckout(page);
+      await foClassicCartPage.clickOnProceedToCheckout(page);
 
       // Address step - Go to delivery step
-      const isStepAddressComplete = await checkoutPage.goToDeliveryStep(page);
+      const isStepAddressComplete = await foClassicCheckoutPage.goToDeliveryStep(page);
       expect(isStepAddressComplete, 'Step Address is not complete').to.eq(true);
     });
 
     it('should select the new carrier and check the chipping costs', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkShippingCost1', baseContext);
 
-      await checkoutPage.chooseShippingMethodAndAddComment(page, newCarrierID);
+      await foClassicCheckoutPage.chooseShippingMethodAndAddComment(page, newCarrierID);
 
-      const shippingCost = await checkoutPage.getShippingCost(page);
-      expect(shippingCost).to.contains(defaultHandlingChargesValue + createCarrierData.ranges[0].zones[0].price);
+      const shippingCost = await foClassicCheckoutPage.getShippingCost(page);
+      expect(shippingCost).to.contains(defaultHandlingChargesValue + createCarrierPrice);
     });
 
     it('should sign out from FO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'signOutFO1', baseContext);
 
-      await checkoutPage.goToHomePage(page);
-      await checkoutPage.logout(page);
+      await foClassicCheckoutPage.goToHomePage(page);
+      await foClassicCheckoutPage.logout(page);
 
-      const isCustomerConnected = await checkoutPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicCheckoutPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is connected').to.eq(false);
     });
   });
@@ -264,26 +276,26 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
     it('should go back to BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBO1', baseContext);
 
-      page = await checkoutPage.closePage(browserContext, page, 0);
+      page = await foClassicCheckoutPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await carriersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(carriersPage.pageTitle);
+      const pageTitle = await boCarriersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCarriersPage.pageTitle);
     });
 
     it('should go to \'Shipping > Preferences\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToPreferencesPage', baseContext);
 
-      await dashboardPage.goToSubMenu(page, dashboardPage.shippingLink, dashboardPage.shippingPreferencesLink);
+      await boDashboardPage.goToSubMenu(page, boDashboardPage.shippingLink, boDashboardPage.shippingPreferencesLink);
 
-      const pageTitle = await preferencesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(preferencesPage.pageTitle);
+      const pageTitle = await boShippingPreferencesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boShippingPreferencesPage.pageTitle);
     });
 
     it('should update \'Handling charges\' value', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateHandlingCharges1', baseContext);
 
-      const textResult = await preferencesPage.setHandlingCharges(page, updateHandlingChargesValue.toString());
-      expect(textResult).to.contain(preferencesPage.successfulUpdateMessage);
+      const textResult = await boShippingPreferencesPage.setHandlingCharges(page, updateHandlingChargesValue.toString());
+      expect(textResult).to.contain(boShippingPreferencesPage.successfulUpdateMessage);
     });
   });
 
@@ -293,29 +305,29 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
       await testContext.addContextItem(this, 'testIdentifier', 'firstViewMyShop2', baseContext);
 
       // Click on view my shop
-      page = await carriersPage.viewMyShop(page);
+      page = await boCarriersPage.viewMyShop(page);
       // Change language
-      await homePage.changeLanguage(page, 'en');
+      await foClassicHomePage.changeLanguage(page, 'en');
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage, 'Home page is not displayed').to.eq(true);
     });
 
     it('should go to login page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'firstGoToLoginPageFO2', baseContext);
 
-      await homePage.goToLoginPage(page);
+      await foClassicHomePage.goToLoginPage(page);
 
-      const pageTitle = await foLoginPage.getPageTitle(page);
-      expect(pageTitle, 'Fail to open FO login page').to.contains(foLoginPage.pageTitle);
+      const pageTitle = await foClassicLoginPage.getPageTitle(page);
+      expect(pageTitle, 'Fail to open FO login page').to.contains(foClassicLoginPage.pageTitle);
     });
 
     it('should sign in with default customer', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'firstSighInFO2', baseContext);
 
-      await foLoginPage.customerLogin(page, dataCustomers.johnDoe);
+      await foClassicLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-      const isCustomerConnected = await foLoginPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicLoginPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is not connected').to.eq(true);
     });
 
@@ -323,35 +335,35 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
       await testContext.addContextItem(this, 'testIdentifier', 'secondCreateOrder', baseContext);
 
       // Go to home page
-      await foLoginPage.goToHomePage(page);
+      await foClassicLoginPage.goToHomePage(page);
       // Go to the first product page
-      await homePage.goToProductPage(page, 1);
+      await foClassicHomePage.goToProductPage(page, 1);
       // Add the created product to the cart
-      await productPage.addProductToTheCart(page);
+      await foClassicProductPage.addProductToTheCart(page);
       // Proceed to checkout the shopping cart
-      await cartPage.clickOnProceedToCheckout(page);
+      await foClassicCartPage.clickOnProceedToCheckout(page);
 
       // Address step - Go to delivery step
-      const isStepAddressComplete = await checkoutPage.goToDeliveryStep(page);
+      const isStepAddressComplete = await foClassicCheckoutPage.goToDeliveryStep(page);
       expect(isStepAddressComplete, 'Step Address is not complete').to.eq(true);
     });
 
     it('should select the new carrier and check the chipping costs', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkShippingCost2', baseContext);
 
-      await checkoutPage.chooseShippingMethodAndAddComment(page, newCarrierID);
+      await foClassicCheckoutPage.chooseShippingMethodAndAddComment(page, newCarrierID);
 
-      const shippingCost = await checkoutPage.getShippingCost(page);
-      expect(shippingCost).to.contains(updateHandlingChargesValue + createCarrierData.ranges[0].zones[0].price);
+      const shippingCost = await foClassicCheckoutPage.getShippingCost(page);
+      expect(shippingCost).to.contains(updateHandlingChargesValue + createCarrierPrice);
     });
 
     it('should sign out from FO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'signOutFo2', baseContext);
 
-      await checkoutPage.goToHomePage(page);
-      await checkoutPage.logout(page);
+      await foClassicCheckoutPage.goToHomePage(page);
+      await foClassicCheckoutPage.logout(page);
 
-      const isCustomerConnected = await checkoutPage.isCustomerConnected(page);
+      const isCustomerConnected = await foClassicCheckoutPage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is connected').to.eq(false);
     });
   });
@@ -361,17 +373,17 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
     it('should go back to BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBO2', baseContext);
 
-      page = await checkoutPage.closePage(browserContext, page, 0);
+      page = await foClassicCheckoutPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await preferencesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(preferencesPage.pageTitle);
+      const pageTitle = await boShippingPreferencesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boShippingPreferencesPage.pageTitle);
     });
 
     it('should update \'Handling charges\' value', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateHandlingCharges2', baseContext);
 
-      const textResult = await preferencesPage.setHandlingCharges(page, defaultHandlingChargesValue.toString());
-      expect(textResult).to.contain(preferencesPage.successfulUpdateMessage);
+      const textResult = await boShippingPreferencesPage.setHandlingCharges(page, defaultHandlingChargesValue.toString());
+      expect(textResult).to.contain(boShippingPreferencesPage.successfulUpdateMessage);
     });
   });
 
@@ -380,33 +392,33 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
     it('should go to \'Shipping > Carriers\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCarriersPage2', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.shippingLink,
-        dashboardPage.carriersLink,
+        boDashboardPage.shippingLink,
+        boDashboardPage.carriersLink,
       );
 
-      const pageTitle = await carriersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(carriersPage.pageTitle);
+      const pageTitle = await boCarriersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCarriersPage.pageTitle);
     });
 
     it('should filter list by name', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterForDelete', baseContext);
 
-      await carriersPage.resetFilter(page);
-      await carriersPage.filterTable(page, 'input', 'name', createCarrierData.name);
+      await boCarriersPage.resetFilter(page);
+      await boCarriersPage.filterTable(page, 'input', 'name', createCarrierData.name);
 
-      const carrierName = await carriersPage.getTextColumn(page, 1, 'name');
+      const carrierName = await boCarriersPage.getTextColumn(page, 1, 'name');
       expect(carrierName).to.contains(createCarrierData.name);
     });
 
     it('should delete carrier', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteCarrier', baseContext);
 
-      const textResult = await carriersPage.deleteCarrier(page, 1);
-      expect(textResult).to.contains(carriersPage.successfulDeleteMessage);
+      const textResult = await boCarriersPage.deleteCarrier(page, 1);
+      expect(textResult).to.contains(boCarriersPage.successfulDeleteMessage);
 
-      await carriersPage.resetFilter(page);
+      await boCarriersPage.resetFilter(page);
     });
   });
 
@@ -415,49 +427,49 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
     it('should go to \'Shop parameters > Customer Settings\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCustomerSettingsPage2', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.shopParametersParentLink,
-        dashboardPage.customerSettingsLink,
+        boDashboardPage.shopParametersParentLink,
+        boDashboardPage.customerSettingsLink,
       );
-      await customerSettingsPage.closeSfToolBar(page);
+      await boCustomerSettingsPage.closeSfToolBar(page);
 
-      const pageTitle = await customerSettingsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(customerSettingsPage.pageTitle);
+      const pageTitle = await boCustomerSettingsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerSettingsPage.pageTitle);
     });
 
     it('should go to Groups page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToGroupsPage2', baseContext);
 
-      await customerSettingsPage.goToGroupsPage(page);
+      await boCustomerSettingsPage.goToGroupsPage(page);
 
-      const pageTitle = await groupsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(groupsPage.pageTitle);
+      const pageTitle = await boCustomerGroupsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerGroupsPage.pageTitle);
     });
 
     it(`should filter by '${dataGroups.customer.name}'`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterByGroupName2', baseContext);
 
-      await groupsPage.filterTable(page, 'input', 'b!name', dataGroups.customer.name);
+      await boCustomerGroupsPage.filterTable(page, 'input', 'b!name', dataGroups.customer.name);
 
-      const textColumn = await groupsPage.getTextColumn(page, 1, 'b!name');
+      const textColumn = await boCustomerGroupsPage.getTextColumn(page, 1, 'b!name');
       expect(textColumn).to.contains(dataGroups.customer.name);
     });
 
     it('should go to edit group page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToEditGroupPage2', baseContext);
 
-      await groupsPage.gotoEditGroupPage(page, 1);
+      await boCustomerGroupsPage.gotoEditGroupPage(page, 1);
 
-      const pageTitle = await addGroupPage.getPageTitle(page);
-      expect(pageTitle).to.contains(addGroupPage.pageTitleEdit);
+      const pageTitle = await boCustomerGroupsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerGroupsCreatePage.pageTitleEdit);
     });
 
     it('should update group by choosing \'Tax included\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateGroup2', baseContext);
 
-      const textResult = await addGroupPage.setPriceDisplayMethod(page, priceDisplayMethod[1]);
-      expect(textResult).to.contains(groupsPage.successfulUpdateMessage);
+      const textResult = await boCustomerGroupsCreatePage.setPriceDisplayMethod(page, priceDisplayMethod[1]);
+      expect(textResult).to.contains(boCustomerGroupsPage.successfulUpdateMessage);
     });
   });
 });

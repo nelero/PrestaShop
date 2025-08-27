@@ -74,7 +74,7 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Composer Install
-        run: composer install --ansi --prefer-dist --no-interaction --no-progress
+        run: COMPOSER_PROCESS_TIMEOUT=600 composer install --ansi --prefer-dist --no-interaction --no-progress
 
       - name: Run Lint Yaml on `app`
         run: php bin/console lint:yaml app --parse-tags
@@ -109,8 +109,8 @@ jobs:
       - name: yamllint on `.t9n.yml`
         run: yamllint -c .github/workflows/yamllint/.yamllint.yml .t9n.yml
 
-  twiglint:
-    name: Twig Lint
+  legacy_link_lint:
+    name: Legacy Link Lint
     runs-on: ubuntu-latest
     steps:
       - name: Setup PHP
@@ -134,7 +134,36 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Composer Install
-        run: composer install --ansi --prefer-dist --no-interaction --no-progress
+        run: COMPOSER_PROCESS_TIMEOUT=600 composer install --ansi --prefer-dist --no-interaction --no-progress
 
-      - name: Run Lint Twig
-        run: php bin/console lint:twig src/PrestaShopBundle/Resources/views/
+      - name: Run Legacy Link Lint
+        run: php bin/console prestashop:linter:legacy-link
+
+  security_attribute_lint:
+    name: Admin Security Attribute Linter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # First install the shop to that the modules controllers are also scanned (not the case without installation)
+      - name: Setup Environment
+        timeout-minutes: 15
+        uses: ./.github/actions/setup-env
+        with:
+          PHP_VERSION: 8.1
+          ENABLE_SSL: 'true'
+          INSTALL_AUTO: 'true'
+          DISABLE_MAKE: 'false'
+      - name: Setup Environment failure
+        uses: ./.github/actions/setup-env-export-logs
+        with:
+          DOCKER_PREFIX: prestashop
+          ARTIFACT_NAME: setup-symfony-console-${{ matrix.app-id }}
+          ENABLE_SSL: 'true'
+          INSTALL_AUTO: 'true'
+        if: failure()
+
+      - name: Run Admin Security Attribute Linter (inside the docker so installed modules are also scanned)
+        run: |
+          echo Searching for routes without security
+          docker exec prestashop-prestashop-git-1 php bin/console prestashop:linter:security-attribute find-missing

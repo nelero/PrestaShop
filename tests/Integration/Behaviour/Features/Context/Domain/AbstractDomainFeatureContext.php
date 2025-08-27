@@ -28,19 +28,18 @@ namespace Tests\Integration\Behaviour\Features\Context\Domain;
 
 use Behat\Behat\Context\Context;
 use Behat\Gherkin\Node\TableNode;
-use Configuration;
 use Currency;
 use Language;
 use PrestaShop\PrestaShop\Core\CommandBus\CommandBusInterface;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Tests\Integration\Behaviour\Features\Context\AbstractPrestaShopFeatureContext;
 use Tests\Integration\Behaviour\Features\Context\CommonFeatureContext;
 use Tests\Integration\Behaviour\Features\Context\LastExceptionTrait;
-use Tests\Integration\Behaviour\Features\Context\SharedStorageTrait;
+use Tests\Resources\MailDevClient;
 
-abstract class AbstractDomainFeatureContext implements Context
+abstract class AbstractDomainFeatureContext extends AbstractPrestaShopFeatureContext implements Context
 {
-    use SharedStorageTrait;
     use LastExceptionTrait;
 
     protected const JPG_IMAGE_TYPE = '.jpg';
@@ -68,6 +67,11 @@ abstract class AbstractDomainFeatureContext implements Context
     protected function getContainer(): ContainerInterface
     {
         return CommonFeatureContext::getContainer();
+    }
+
+    protected function getMailDevClient(): MailDevClient
+    {
+        return $this->getContainer()->get(MailDevClient::class);
     }
 
     /**
@@ -157,14 +161,6 @@ abstract class AbstractDomainFeatureContext implements Context
         return $localizedValues;
     }
 
-    /**
-     * @return int
-     */
-    protected function getDefaultLangId(): int
-    {
-        return (int) Configuration::get('PS_LANG_DEFAULT');
-    }
-
     protected function getDefaultCurrencyId(): int
     {
         return Currency::getDefaultCurrencyId();
@@ -173,14 +169,6 @@ abstract class AbstractDomainFeatureContext implements Context
     protected function getDefaultCurrencyIsoCode(): string
     {
         return Currency::getIsoCodeById($this->getDefaultCurrencyId());
-    }
-
-    /**
-     * @return int
-     */
-    protected function getDefaultShopId(): int
-    {
-        return (int) Configuration::get('PS_SHOP_DEFAULT');
     }
 
     /**

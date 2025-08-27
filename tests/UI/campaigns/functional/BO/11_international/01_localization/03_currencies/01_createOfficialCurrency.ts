@@ -1,25 +1,21 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
 
-// Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
-
 // Import pages
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import localizationPage from '@pages/BO/international/localization';
-import currenciesPage from '@pages/BO/international/currencies';
-import addCurrencyPage from '@pages/BO/international/currencies/add';
-// Import FO pages
-import {homePage as foHomePage} from '@pages/FO/classic/home';
-
 import {
+  boCurrenciesPage,
+  boCurrenciesCreatePage,
+  boDashboardPage,
+  boLocalizationPage,
+  boLoginPage,
+  type BrowserContext,
   dataCurrencies,
+  foClassicHomePage,
+  type Page,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
 
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_international_localization_currencies_createOfficialCurrency';
 
@@ -36,45 +32,51 @@ describe('BO - International - Currencies : Create official currency and check i
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
+    await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+    await boLoginPage.goTo(page, global.BO.URL);
+    await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+    const pageTitle = await boDashboardPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boDashboardPage.pageTitle);
   });
 
   it('should go to \'International > Localization\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToLocalizationPage', baseContext);
 
-    await dashboardPage.goToSubMenu(
+    await boDashboardPage.goToSubMenu(
       page,
-      dashboardPage.internationalParentLink,
-      dashboardPage.localizationLink,
+      boDashboardPage.internationalParentLink,
+      boDashboardPage.localizationLink,
     );
-    await localizationPage.closeSfToolBar(page);
+    await boLocalizationPage.closeSfToolBar(page);
 
-    const pageTitle = await localizationPage.getPageTitle(page);
-    expect(pageTitle).to.contains(localizationPage.pageTitle);
+    const pageTitle = await boLocalizationPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boLocalizationPage.pageTitle);
   });
 
   it('should go to \'Currencies\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToCurrenciesPage', baseContext);
 
-    await localizationPage.goToSubTabCurrencies(page);
+    await boLocalizationPage.goToSubTabCurrencies(page);
 
-    const pageTitle = await currenciesPage.getPageTitle(page);
-    expect(pageTitle).to.contains(currenciesPage.pageTitle);
+    const pageTitle = await boCurrenciesPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boCurrenciesPage.pageTitle);
   });
 
   it('should reset all filters', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirst', baseContext);
 
-    numberOfCurrencies = await currenciesPage.resetAndGetNumberOfLines(page);
+    numberOfCurrencies = await boCurrenciesPage.resetAndGetNumberOfLines(page);
     expect(numberOfCurrencies).to.be.above(0);
   });
 
@@ -82,21 +84,21 @@ describe('BO - International - Currencies : Create official currency and check i
     it('should go to create new currency page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAddNewCurrencyPage', baseContext);
 
-      await currenciesPage.goToAddNewCurrencyPage(page);
+      await boCurrenciesPage.goToAddNewCurrencyPage(page);
 
-      const pageTitle = await addCurrencyPage.getPageTitle(page);
-      expect(pageTitle).to.contains(addCurrencyPage.pageTitle);
+      const pageTitle = await boCurrenciesCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCurrenciesCreatePage.pageTitle);
     });
 
     it('should create official currency', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createOfficialCurrency', baseContext);
 
       // Create and check successful message
-      const textResult = await addCurrencyPage.addOfficialCurrency(page, dataCurrencies.mad);
-      expect(textResult).to.contains(currenciesPage.successfulCreationMessage);
+      const textResult = await boCurrenciesCreatePage.addOfficialCurrency(page, dataCurrencies.mad);
+      expect(textResult).to.contains(boCurrenciesPage.successfulCreationMessage);
 
       // Check number of currencies after creation
-      const numberOfCurrenciesAfterCreation = await currenciesPage.getNumberOfElementInGrid(page);
+      const numberOfCurrenciesAfterCreation = await boCurrenciesPage.getNumberOfElementInGrid(page);
       expect(numberOfCurrenciesAfterCreation).to.be.equal(numberOfCurrencies + 1);
     });
 
@@ -106,14 +108,14 @@ describe('BO - International - Currencies : Create official currency and check i
         await testContext.addContextItem(this, 'testIdentifier', 'checkCurrencyValues', baseContext);
 
         // Filter
-        await currenciesPage.filterTable(page, 'input', 'iso_code', dataCurrencies.mad.isoCode);
+        await boCurrenciesPage.filterTable(page, 'input', 'iso_code', dataCurrencies.mad.isoCode);
 
         // Check number of currencies
-        const numberOfCurrenciesAfterFilter = await currenciesPage.getNumberOfElementInGrid(page);
+        const numberOfCurrenciesAfterFilter = await boCurrenciesPage.getNumberOfElementInGrid(page);
         expect(numberOfCurrenciesAfterFilter).to.be.at.most(numberOfCurrencies + 1);
 
         // Check currency created
-        const createdCurrency = await currenciesPage.getCurrencyFromTable(page, 1);
+        const createdCurrency = await boCurrenciesPage.getCurrencyFromTable(page, 1);
         await Promise.all([
           expect(createdCurrency.name).to.contains(dataCurrencies.mad.name),
           expect(createdCurrency.symbol).to.contains(dataCurrencies.mad.symbol),
@@ -128,9 +130,9 @@ describe('BO - International - Currencies : Create official currency and check i
       await testContext.addContextItem(this, 'testIdentifier', 'goToFo1', baseContext);
 
       // View my shop and int pages
-      page = await currenciesPage.viewMyShop(page);
+      page = await boCurrenciesPage.viewMyShop(page);
 
-      const isHomePage = await foHomePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage).to.eq(true);
     });
 
@@ -138,25 +140,25 @@ describe('BO - International - Currencies : Create official currency and check i
       await testContext.addContextItem(this, 'testIdentifier', 'changeFoCurrency1', baseContext);
 
       // Check currency
-      await foHomePage.changeCurrency(page, dataCurrencies.mad.isoCode, dataCurrencies.mad.symbol);
+      await foClassicHomePage.changeCurrency(page, dataCurrencies.mad.isoCode, dataCurrencies.mad.symbol);
 
-      const shopCurrency = await foHomePage.getDefaultCurrency(page);
+      const shopCurrency = await foClassicHomePage.getDefaultCurrency(page);
       expect(shopCurrency).to.contain(dataCurrencies.mad.isoCode);
     });
 
     it('should go back to BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBo1', baseContext);
 
-      page = await foHomePage.closePage(browserContext, page, 0);
+      page = await foClassicHomePage.closePage(browserContext, page, 0);
 
-      const pageTitle = await currenciesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(currenciesPage.pageTitle);
+      const pageTitle = await boCurrenciesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCurrenciesPage.pageTitle);
     });
 
     it('should reset filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilterAfterCreation', baseContext);
 
-      const numberOfCurrenciesAfterReset = await currenciesPage.resetAndGetNumberOfLines(page);
+      const numberOfCurrenciesAfterReset = await boCurrenciesPage.resetAndGetNumberOfLines(page);
       expect(numberOfCurrenciesAfterReset).to.be.equal(numberOfCurrencies + 1);
     });
   });
@@ -166,14 +168,14 @@ describe('BO - International - Currencies : Create official currency and check i
       await testContext.addContextItem(this, 'testIdentifier', 'filterToDisableCurrency', baseContext);
 
       // Filter
-      await currenciesPage.filterTable(page, 'input', 'iso_code', dataCurrencies.mad.isoCode);
+      await boCurrenciesPage.filterTable(page, 'input', 'iso_code', dataCurrencies.mad.isoCode);
 
       // Check number of currencies
-      const numberOfCurrenciesAfterFilter = await currenciesPage.getNumberOfElementInGrid(page);
+      const numberOfCurrenciesAfterFilter = await boCurrenciesPage.getNumberOfElementInGrid(page);
       expect(numberOfCurrenciesAfterFilter).to.be.at.most(numberOfCurrencies + 1);
 
       // Check existence of currency created
-      const textColumn = await currenciesPage.getTextColumnFromTableCurrency(page, 1, 'iso_code');
+      const textColumn = await boCurrenciesPage.getTextColumnFromTableCurrency(page, 1, 'iso_code');
       expect(textColumn).to.contains(dataCurrencies.mad.isoCode);
     });
 
@@ -181,15 +183,15 @@ describe('BO - International - Currencies : Create official currency and check i
       await testContext.addContextItem(this, 'testIdentifier', 'disableCurrency', baseContext);
 
       // Disable currency and check successful message
-      const isActionPerformed = await currenciesPage.setStatus(page, 1, false);
+      const isActionPerformed = await boCurrenciesPage.setStatus(page, 1, false);
 
       if (isActionPerformed) {
-        const resultMessage = await currenciesPage.getAlertSuccessBlockParagraphContent(page);
-        expect(resultMessage).to.contains(currenciesPage.successfulUpdateStatusMessage);
+        const resultMessage = await boCurrenciesPage.getAlertSuccessBlockParagraphContent(page);
+        expect(resultMessage).to.contains(boCurrenciesPage.successfulUpdateStatusMessage);
       }
 
       // Check currency disabled
-      const currencyStatus = await currenciesPage.getStatus(page, 1);
+      const currencyStatus = await boCurrenciesPage.getStatus(page, 1);
       expect(currencyStatus).to.be.equal(false);
     });
 
@@ -197,32 +199,32 @@ describe('BO - International - Currencies : Create official currency and check i
       await testContext.addContextItem(this, 'testIdentifier', 'goToFo2', baseContext);
 
       // View my shop and init pages
-      page = await currenciesPage.viewMyShop(page);
+      page = await boCurrenciesPage.viewMyShop(page);
 
-      const isHomePage = await foHomePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage).to.eq(true);
     });
 
     it('should check that the currencies list is not visible', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkCurrency2', baseContext);
 
-      const found = await foHomePage.isCurrencyDropdownExist(page);
+      const found = await foClassicHomePage.isCurrencyDropdownExist(page);
       expect(found, 'Currencies list is visible').to.eq(false);
     });
 
     it('should go back to BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goBackToBo2', baseContext);
 
-      page = await foHomePage.closePage(browserContext, page, 0);
+      page = await foClassicHomePage.closePage(browserContext, page, 0);
 
-      const pageTitle = await currenciesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(currenciesPage.pageTitle);
+      const pageTitle = await boCurrenciesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCurrenciesPage.pageTitle);
     });
 
     it('should reset filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilterAfterDisable', baseContext);
 
-      const numberOfCurrenciesAfterReset = await currenciesPage.resetAndGetNumberOfLines(page);
+      const numberOfCurrenciesAfterReset = await boCurrenciesPage.resetAndGetNumberOfLines(page);
       expect(numberOfCurrenciesAfterReset).to.be.equal(numberOfCurrencies + 1);
     });
   });
@@ -232,27 +234,27 @@ describe('BO - International - Currencies : Create official currency and check i
       await testContext.addContextItem(this, 'testIdentifier', 'filterToDelete', baseContext);
 
       // Filter
-      await currenciesPage.filterTable(page, 'input', 'iso_code', dataCurrencies.mad.isoCode);
+      await boCurrenciesPage.filterTable(page, 'input', 'iso_code', dataCurrencies.mad.isoCode);
 
-      const numberOfCurrenciesAfterFilter = await currenciesPage.getNumberOfElementInGrid(page);
+      const numberOfCurrenciesAfterFilter = await boCurrenciesPage.getNumberOfElementInGrid(page);
       expect(numberOfCurrenciesAfterFilter).to.be.equal(numberOfCurrencies);
 
       // Check currency to delete
-      const textColumn = await currenciesPage.getTextColumnFromTableCurrency(page, 1, 'iso_code');
+      const textColumn = await boCurrenciesPage.getTextColumnFromTableCurrency(page, 1, 'iso_code');
       expect(textColumn).to.contains(dataCurrencies.mad.isoCode);
     });
 
     it('should delete currency', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteCurrency', baseContext);
 
-      const result = await currenciesPage.deleteCurrency(page, 1);
-      expect(result).to.be.equal(currenciesPage.successfulDeleteMessage);
+      const result = await boCurrenciesPage.deleteCurrency(page, 1);
+      expect(result).to.be.equal(boCurrenciesPage.successfulDeleteMessage);
     });
 
     it('should reset filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilterAfterDelete', baseContext);
 
-      const numberOfCurrenciesAfterReset = await currenciesPage.resetAndGetNumberOfLines(page);
+      const numberOfCurrenciesAfterReset = await boCurrenciesPage.resetAndGetNumberOfLines(page);
       expect(numberOfCurrenciesAfterReset).to.be.equal(numberOfCurrencies);
     });
   });

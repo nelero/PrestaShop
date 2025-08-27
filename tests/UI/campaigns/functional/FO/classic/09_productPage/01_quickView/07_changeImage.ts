@@ -1,21 +1,20 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import files from '@utils/files';
 
 // Import common tests
 import {createProductTest, deleteProductTest} from '@commonTests/BO/catalog/product';
 
-// Import pages
-import {homePage} from '@pages/FO/classic/home';
-import {quickViewModal} from '@pages/FO/classic/modal/quickView';
-import {searchResultsPage} from '@pages/FO/classic/searchResults';
-
-// Import data
-import ProductData from '@data/faker/product';
-
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+import {
+  type BrowserContext,
+  FakerProduct,
+  foClassicHomePage,
+  foClassicModalQuickViewPage,
+  foClassicSearchResultsPage,
+  type Page,
+  utilsFile,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_classic_productPage_quickView_changeImage';
 
@@ -34,7 +33,7 @@ describe('FO - Product page - Quick view : Change image', async () => {
   let page: Page;
 
   // Data to create product out of stock not allowed
-  const productWith2Images: ProductData = new ProductData({
+  const productWith2Images: FakerProduct = new FakerProduct({
     type: 'standard',
     quantity: 2,
     coverImage: 'coverImage.jpg',
@@ -46,61 +45,61 @@ describe('FO - Product page - Quick view : Change image', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
-    await files.generateImage(productWith2Images.coverImage!);
-    await files.generateImage(productWith2Images.thumbImage!);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
+    await utilsFile.generateImage(productWith2Images.coverImage!);
+    await utilsFile.generateImage(productWith2Images.thumbImage!);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
-    await files.deleteFile(productWith2Images.coverImage!);
-    await files.deleteFile(productWith2Images.thumbImage!);
+    await utilsPlaywright.closeBrowserContext(browserContext);
+    await utilsFile.deleteFile(productWith2Images.coverImage!);
+    await utilsFile.deleteFile(productWith2Images.thumbImage!);
   });
 
   describe('Change image', async () => {
     it('should go to FO home page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFo', baseContext);
 
-      await homePage.goToFo(page);
+      await foClassicHomePage.goToFo(page);
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage).to.equal(true);
     });
 
     it('should search for the created product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'searchCreatedProduct', baseContext);
 
-      await homePage.searchProduct(page, productWith2Images.name);
+      await foClassicHomePage.searchProduct(page, productWith2Images.name);
 
-      const productsNumber = await searchResultsPage.getSearchResultsNumber(page);
+      const productsNumber = await foClassicSearchResultsPage.getSearchResultsNumber(page);
       expect(productsNumber).to.equal(1);
     });
 
     it('should quick view the created product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'quickView', baseContext);
 
-      await searchResultsPage.quickViewProduct(page, 1);
+      await foClassicSearchResultsPage.quickViewProduct(page, 1);
 
-      const isModalVisible = await quickViewModal.isQuickViewProductModalVisible(page);
+      const isModalVisible = await foClassicModalQuickViewPage.isQuickViewProductModalVisible(page);
       expect(isModalVisible).to.equal(true);
     });
 
     it('should display the second image', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'displaySecondImage', baseContext);
 
-      const firstCoverImageURL = await quickViewModal.getQuickViewCoverImage(page);
-      await quickViewModal.selectThumbImage(page, 2);
-      const secondCoverImageURL = await quickViewModal.getQuickViewCoverImage(page);
+      const firstCoverImageURL = await foClassicModalQuickViewPage.getQuickViewCoverImage(page);
+      await foClassicModalQuickViewPage.selectThumbImage(page, 2);
+      const secondCoverImageURL = await foClassicModalQuickViewPage.getQuickViewCoverImage(page);
       expect(firstCoverImageURL).to.not.equal(secondCoverImageURL);
     });
 
     it('should display the first image', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'displayFirstImage', baseContext);
 
-      const firstCoverImageURL = await quickViewModal.getQuickViewCoverImage(page);
-      await quickViewModal.selectThumbImage(page, 1);
-      const secondCoverImageURL = await quickViewModal.getQuickViewCoverImage(page);
+      const firstCoverImageURL = await foClassicModalQuickViewPage.getQuickViewCoverImage(page);
+      await foClassicModalQuickViewPage.selectThumbImage(page, 1);
+      const secondCoverImageURL = await foClassicModalQuickViewPage.getQuickViewCoverImage(page);
       expect(firstCoverImageURL).to.not.equal(secondCoverImageURL);
     });
   });

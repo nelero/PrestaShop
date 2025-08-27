@@ -1,46 +1,38 @@
-// Import utils
-import date from '@utils/date';
-import files from '@utils/files';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
 // Import commonTests
 import {enableMerchandiseReturns, disableMerchandiseReturns} from '@commonTests/BO/customerService/merchandiseReturns';
-import loginCommon from '@commonTests/BO/loginBO';
 import {createOrderByCustomerTest} from '@commonTests/FO/hummingbird/order';
-import {installHummingbird, uninstallHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import pages
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import boMerchandiseReturnsPage from '@pages/BO/customerService/merchandiseReturns';
-import ordersPage from '@pages/BO/orders';
-import {viewOrderBasePage} from '@pages/BO/orders/view/viewOrderBasePage';
-import editMerchandiseReturnsPage from '@pages/BO/customerService/merchandiseReturns/edit';
-// Import FO pages
-import homePage from '@pages/FO/hummingbird/home';
-import loginPage from '@pages/FO/hummingbird/login';
-import myAccountPage from '@pages/FO/hummingbird/myAccount';
-import foMerchandiseReturnsPage from '@pages/FO/hummingbird/myAccount/merchandiseReturns';
-import orderDetailsPage from '@pages/FO/hummingbird/myAccount/orderDetails';
-import orderHistoryPage from '@pages/FO/hummingbird/myAccount/orderHistory';
-import returnDetailsPage from '@pages/FO/hummingbird/myAccount/returnDetails';
-
-// Import data
-import Addresses from '@data/demo/address';
-import Products from '@data/demo/products';
-import OrderReturnStatuses from '@data/demo/orderReturnStatuses';
-import OrderData from '@data/faker/order';
+import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
 import {
-  // Import data
+  boDashboardPage,
+  boLoginPage,
+  boMerchandiseReturnsPage,
+  boMerchandiseReturnsEditPage,
+  boOrdersPage,
+  boOrdersViewBasePage,
+  type BrowserContext,
+  dataAddresses,
   dataCustomers,
+  dataOrderReturnStatuses,
   dataOrderStatuses,
   dataPaymentMethods,
+  dataProducts,
+  FakerOrder,
+  foHummingbirdHomePage,
+  foHummingbirdLoginPage,
+  foHummingbirdMyAccountPage,
+  foHummingbirdMyMerchandiseReturnsPage,
+  foHummingbirdMyOrderDetailsPage,
+  foHummingbirdMyOrderHistoryPage,
+  foHummingbirdMyReturnDetailsPage,
+  type Page,
+  utilsDate,
+  utilsFile,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_FO_hummingbird_userAccount_merchandiseReturns_checkOrderReturnPDF';
 
@@ -66,13 +58,13 @@ describe('FO - Account : Check order return PDF', async () => {
   let filePath: string|null;
   let fileName: string = '#RE0000';
 
-  const today: string = date.getDateFormat('mm/dd/yyyy');
+  const today: string = utilsDate.getDateFormat('mm/dd/yyyy');
   // New order by customer data
-  const orderData: OrderData = new OrderData({
+  const orderData: FakerOrder = new FakerOrder({
     customer: dataCustomers.johnDoe,
     products: [
       {
-        product: Products.demo_1,
+        product: dataProducts.demo_1,
         quantity: 1,
       },
     ],
@@ -80,7 +72,7 @@ describe('FO - Account : Check order return PDF', async () => {
   });
 
   // Pre-condition : Install Hummingbird
-  installHummingbird(`${baseContext}_preTest_0`);
+  enableHummingbird(`${baseContext}_preTest_0`);
 
   // Pre-condition: Create order
   createOrderByCustomerTest(orderData, `${baseContext}_preTest_1`);
@@ -90,59 +82,65 @@ describe('FO - Account : Check order return PDF', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe(`Change the created orders status to '${dataOrderStatuses.shipped.name}'`, async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Orders > Orders\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrdersPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.ordersParentLink,
-        dashboardPage.ordersLink,
+        boDashboardPage.ordersParentLink,
+        boDashboardPage.ordersLink,
       );
 
-      const pageTitle = await ordersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(ordersPage.pageTitle);
+      const pageTitle = await boOrdersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boOrdersPage.pageTitle);
     });
 
     it('should filter the Orders table by the default customer and check the result', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterOrder', baseContext);
 
-      await ordersPage.filterOrders(page, 'input', 'customer', dataCustomers.johnDoe.lastName);
+      await boOrdersPage.filterOrders(page, 'input', 'customer', dataCustomers.johnDoe.lastName);
 
-      const textColumn = await ordersPage.getTextColumn(page, 'customer', 1);
+      const textColumn = await boOrdersPage.getTextColumn(page, 'customer', 1);
       expect(textColumn).to.contains(dataCustomers.johnDoe.lastName);
     });
 
     it('should get the order ID', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'getOrderID', baseContext);
 
-      orderID = await ordersPage.getOrderIDNumber(page);
+      orderID = await boOrdersPage.getOrderIDNumber(page);
       expect(orderID).to.not.equal(1);
     });
 
     it('should get the created Order reference', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'getOrderReference', baseContext);
 
-      orderReference = await ordersPage.getTextColumn(page, 'reference', 1);
+      orderReference = await boOrdersPage.getTextColumn(page, 'reference', 1);
       expect(orderReference).to.not.eq(null);
     });
 
     it('should get the created Order date', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'getOrderDate', baseContext);
 
-      orderDate = await ordersPage.getTextColumn(page, 'date_add', 1);
+      orderDate = await boOrdersPage.getTextColumn(page, 'date_add', 1);
       orderDate = orderDate.substring(0, 10);
       expect(orderDate).to.not.eq(null);
     });
@@ -151,36 +149,36 @@ describe('FO - Account : Check order return PDF', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFirstOrderPage', baseContext);
 
       // View order
-      await ordersPage.goToOrder(page, 1);
+      await boOrdersPage.goToOrder(page, 1);
 
-      const pageTitle = await viewOrderBasePage.getPageTitle(page);
-      expect(pageTitle).to.contains(viewOrderBasePage.pageTitle);
+      const pageTitle = await boOrdersViewBasePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boOrdersViewBasePage.pageTitle);
     });
 
     it(`should change the order status to '${dataOrderStatuses.shipped.name}' and check it`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateOrderStatus', baseContext);
 
-      const result = await viewOrderBasePage.modifyOrderStatus(page, dataOrderStatuses.shipped.name);
+      const result = await boOrdersViewBasePage.modifyOrderStatus(page, dataOrderStatuses.shipped.name);
       expect(result).to.equal(dataOrderStatuses.shipped.name);
     });
 
     it('should go to \'Orders > Orders\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrdersPage2', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.ordersParentLink,
-        dashboardPage.ordersLink,
+        boDashboardPage.ordersParentLink,
+        boDashboardPage.ordersLink,
       );
 
-      const pageTitle = await ordersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(ordersPage.pageTitle);
+      const pageTitle = await boOrdersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boOrdersPage.pageTitle);
     });
 
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetAllFilters', baseContext);
 
-      const numberOfOrders = await ordersPage.resetAndGetNumberOfLines(page);
+      const numberOfOrders = await boOrdersPage.resetAndGetNumberOfLines(page);
       expect(numberOfOrders).to.be.above(0);
     });
   });
@@ -190,58 +188,58 @@ describe('FO - Account : Check order return PDF', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'goToFO1', baseContext);
 
       // Click on view my shop
-      page = await viewOrderBasePage.viewMyShop(page);
+      page = await boOrdersViewBasePage.viewMyShop(page);
       // Change FO language
-      await homePage.changeLanguage(page, 'en');
+      await foHummingbirdHomePage.changeLanguage(page, 'en');
 
-      const isHomePage = await homePage.isHomePage(page);
+      const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage, 'Home page is not displayed').to.eq(true);
     });
 
     it('should login', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'logonFO', baseContext);
 
-      await homePage.goToLoginPage(page);
-      await loginPage.customerLogin(page, dataCustomers.johnDoe);
+      await foHummingbirdHomePage.goToLoginPage(page);
+      await foHummingbirdLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-      const isCustomerConnected = await loginPage.isCustomerConnected(page);
+      const isCustomerConnected = await foHummingbirdLoginPage.isCustomerConnected(page);
       expect(isCustomerConnected).to.eq(true);
     });
 
     it('should go to my account page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAccountPage2', baseContext);
 
-      await homePage.goToMyAccountPage(page);
+      await foHummingbirdHomePage.goToMyAccountPage(page);
 
-      const pageTitle = await myAccountPage.getPageTitle(page);
-      expect(pageTitle).to.contains(myAccountPage.pageTitle);
+      const pageTitle = await foHummingbirdMyAccountPage.getPageTitle(page);
+      expect(pageTitle).to.contains(foHummingbirdMyAccountPage.pageTitle);
     });
 
     it('should go to \'Order history and details\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrderHistoryPage', baseContext);
 
-      await myAccountPage.goToHistoryAndDetailsPage(page);
+      await foHummingbirdMyAccountPage.goToHistoryAndDetailsPage(page);
 
-      const pageTitle = await orderHistoryPage.getPageTitle(page);
-      expect(pageTitle).to.contains(orderHistoryPage.pageTitle);
+      const pageTitle = await foHummingbirdMyOrderHistoryPage.getPageTitle(page);
+      expect(pageTitle).to.contains(foHummingbirdMyOrderHistoryPage.pageTitle);
     });
 
     it('should go to the first order in the list and check the existence of order return form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'isOrderReturnFormVisible', baseContext);
 
-      await orderHistoryPage.goToDetailsPage(page, 1);
+      await foHummingbirdMyOrderHistoryPage.goToDetailsPage(page, 1);
 
-      const result = await orderDetailsPage.isOrderReturnFormVisible(page);
+      const result = await foHummingbirdMyOrderDetailsPage.isOrderReturnFormVisible(page);
       expect(result).to.eq(true);
     });
 
     it('should create a merchandise return', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createMerchandiseReturn', baseContext);
 
-      await orderDetailsPage.requestMerchandiseReturn(page, 'message test');
+      await foHummingbirdMyOrderDetailsPage.requestMerchandiseReturn(page, 'message test');
 
-      const pageTitle = await foMerchandiseReturnsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(foMerchandiseReturnsPage.pageTitle);
+      const pageTitle = await foHummingbirdMyMerchandiseReturnsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(foHummingbirdMyMerchandiseReturnsPage.pageTitle);
     });
   });
 
@@ -249,77 +247,77 @@ describe('FO - Account : Check order return PDF', async () => {
     it('should verify the Order reference', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkOrderReturnReference', baseContext);
 
-      const packageStatus = await foMerchandiseReturnsPage.getTextColumn(page, 'orderReference');
+      const packageStatus = await foHummingbirdMyMerchandiseReturnsPage.getTextColumn(page, 'orderReference');
       expect(packageStatus).to.equal(orderReference);
     });
 
     it('should verify the Order return file name', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkOrderReturnFileName', baseContext);
 
-      const packageStatus = await foMerchandiseReturnsPage.getTextColumn(page, 'fileName');
+      const packageStatus = await foHummingbirdMyMerchandiseReturnsPage.getTextColumn(page, 'fileName');
       expect(packageStatus).to.contains('#RE00');
     });
 
     it('should verify the order return status', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkOrderReturnStatus1', baseContext);
 
-      const packageStatus = await foMerchandiseReturnsPage.getTextColumn(page, 'status');
-      expect(packageStatus).to.equal(OrderReturnStatuses.waitingForConfirmation.name);
+      const packageStatus = await foHummingbirdMyMerchandiseReturnsPage.getTextColumn(page, 'status');
+      expect(packageStatus).to.equal(dataOrderReturnStatuses.waitingForConfirmation.name);
     });
 
     it('should verify the order return date issued', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkOrderReturnDateIssued', baseContext);
 
-      const packageStatus = await foMerchandiseReturnsPage.getTextColumn(page, 'dateIssued');
+      const packageStatus = await foHummingbirdMyMerchandiseReturnsPage.getTextColumn(page, 'dateIssued');
       expect(packageStatus).to.equal(orderDate);
     });
 
     it('should go to return details page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToReturnDetails', baseContext);
 
-      await foMerchandiseReturnsPage.goToReturnDetailsPage(page);
+      await foHummingbirdMyMerchandiseReturnsPage.goToReturnDetailsPage(page);
 
-      const pageTitle = await returnDetailsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(returnDetailsPage.pageTitle);
+      const pageTitle = await foHummingbirdMyReturnDetailsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(foHummingbirdMyReturnDetailsPage.pageTitle);
     });
 
     it('should check the return notification', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkReturnNotification', baseContext);
 
-      const orderReturnNotifications = await returnDetailsPage.getAlertWarning(page);
-      expect(orderReturnNotifications).to.equal(returnDetailsPage.errorMessage);
+      const orderReturnNotifications = await foHummingbirdMyReturnDetailsPage.getAlertWarning(page);
+      expect(orderReturnNotifications).to.equal(foHummingbirdMyReturnDetailsPage.errorMessage);
     });
 
     it('should check the return details', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkReturnDetails', baseContext);
 
-      const orderReturnInfo = await returnDetailsPage.getOrderReturnInfo(page);
+      const orderReturnInfo = await foHummingbirdMyReturnDetailsPage.getOrderReturnInfo(page);
       expect(orderReturnInfo)
-        .to.contains(`on ${orderDate} ${returnDetailsPage.orderReturnCardBlock}`)
-        .and.to.contains(OrderReturnStatuses.waitingForConfirmation.name)
-        .and.to.contains(`List of items to be returned: Product Quantity ${Products.demo_1.name} `
-          + `(Size: S - Color: White) Reference: ${Products.demo_1.reference} 1`);
+        .to.contains(`on ${orderDate} ${foHummingbirdMyReturnDetailsPage.orderReturnCardBlock}`)
+        .and.to.contains(dataOrderReturnStatuses.waitingForConfirmation.name)
+        .and.to.contains(`List of items to be returned: Product Quantity ${dataProducts.demo_1.name} `
+          + `(Size: S - Color: White) Reference: ${dataProducts.demo_1.reference} 1`);
     });
   });
 
   describe('Check the return details PDF', async () => {
-    describe(`Change the merchandise returns status to '${OrderReturnStatuses.waitingForPackage.name}'`, async () => {
+    describe(`Change the merchandise returns status to '${dataOrderReturnStatuses.waitingForPackage.name}'`, async () => {
       it('should go to BO', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToBO', baseContext);
 
-        await foMerchandiseReturnsPage.goTo(page, global.BO.URL);
+        await foHummingbirdMyMerchandiseReturnsPage.goTo(page, global.BO.URL);
 
-        const pageTitle = await dashboardPage.getPageTitle(page);
-        expect(pageTitle).to.contains(dashboardPage.pageTitle);
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boDashboardPage.pageTitle);
       });
 
       it('should go to \'Customer Service > Merchandise Returns\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToMerchandiseReturnsPage', baseContext);
 
-        await dashboardPage.goToSubMenu(
+        await boDashboardPage.goToSubMenu(
           page,
-          dashboardPage.customerServiceParentLink,
-          dashboardPage.merchandiseReturnsLink,
+          boDashboardPage.customerServiceParentLink,
+          boDashboardPage.merchandiseReturnsLink,
         );
 
         const pageTitle = await boMerchandiseReturnsPage.getPageTitle(page);
@@ -354,15 +352,15 @@ describe('FO - Account : Check order return PDF', async () => {
 
         await boMerchandiseReturnsPage.goToMerchandiseReturnPage(page);
 
-        const pageTitle = await editMerchandiseReturnsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(editMerchandiseReturnsPage.pageTitle);
+        const pageTitle = await boMerchandiseReturnsEditPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boMerchandiseReturnsEditPage.pageTitle);
       });
 
       it('should edit merchandise returns status', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'editReturnStatus', baseContext);
 
-        const textResult = await editMerchandiseReturnsPage.setStatus(page, OrderReturnStatuses.waitingForPackage.name);
-        expect(textResult).to.contains(editMerchandiseReturnsPage.successfulUpdateMessage);
+        const textResult = await boMerchandiseReturnsEditPage.setStatus(page, dataOrderReturnStatuses.waitingForPackage.name);
+        expect(textResult).to.contains(boMerchandiseReturnsEditPage.successfulUpdateMessage);
       });
     });
 
@@ -371,62 +369,62 @@ describe('FO - Account : Check order return PDF', async () => {
         await testContext.addContextItem(this, 'testIdentifier', 'goToFO2', baseContext);
 
         // Click on view my shop
-        page = await editMerchandiseReturnsPage.viewMyShop(page);
+        page = await boMerchandiseReturnsEditPage.viewMyShop(page);
         // Change FO language
-        await homePage.changeLanguage(page, 'en');
+        await foHummingbirdHomePage.changeLanguage(page, 'en');
 
-        const isHomePage = await homePage.isHomePage(page);
+        const isHomePage = await foHummingbirdHomePage.isHomePage(page);
         expect(isHomePage, 'Home page is not displayed').to.eq(true);
       });
 
       it('should go to account page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToAccountPage', baseContext);
 
-        await homePage.goToMyAccountPage(page);
+        await foHummingbirdHomePage.goToMyAccountPage(page);
 
-        const pageTitle = await myAccountPage.getPageTitle(page);
-        expect(pageTitle).to.contains(myAccountPage.pageTitle);
+        const pageTitle = await foHummingbirdMyAccountPage.getPageTitle(page);
+        expect(pageTitle).to.contains(foHummingbirdMyAccountPage.pageTitle);
       });
 
       it('should go to \'Merchandise Returns\' page', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'goToMerchandiseReturnPage', baseContext);
 
-        await myAccountPage.goToMerchandiseReturnsPage(page);
+        await foHummingbirdMyAccountPage.goToMerchandiseReturnsPage(page);
 
-        const pageTitle = await foMerchandiseReturnsPage.getPageTitle(page);
-        expect(pageTitle).to.contains(foMerchandiseReturnsPage.pageTitle);
+        const pageTitle = await foHummingbirdMyMerchandiseReturnsPage.getPageTitle(page);
+        expect(pageTitle).to.contains(foHummingbirdMyMerchandiseReturnsPage.pageTitle);
       });
 
       it('should verify the order return status', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkOrderReturnStatus2', baseContext);
 
-        const fileName = await foMerchandiseReturnsPage.getTextColumn(page, 'status');
-        expect(fileName).to.be.equal(OrderReturnStatuses.waitingForPackage.name);
+        const fileName = await foHummingbirdMyMerchandiseReturnsPage.getTextColumn(page, 'status');
+        expect(fileName).to.be.equal(dataOrderReturnStatuses.waitingForPackage.name);
       });
 
       it('should download the return form', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'downloadReturnForm', baseContext);
 
-        filePath = await foMerchandiseReturnsPage.downloadReturnForm(page, 1);
+        filePath = await foHummingbirdMyMerchandiseReturnsPage.downloadReturnForm(page, 1);
 
-        const found = await files.doesFileExist(filePath);
+        const found = await utilsFile.doesFileExist(filePath);
         expect(found, 'PDF file was not downloaded').to.eq(true);
       });
 
       it('should check the PDF Header ', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkReturnFileName', baseContext);
 
-        const isVisible = await files.isTextInPDF(filePath, `ORDER RETURN,,${today},,${fileName},,`);
+        const isVisible = await utilsFile.isTextInPDF(filePath, `ORDER RETURN,,${today},,${fileName},,`);
         expect(isVisible, 'The order return file name is not correct!').to.eq(true);
       });
 
       it('should check the Billing & delivery address', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkBillingAddress', baseContext);
 
-        const isVisible = await files.isTextInPDF(filePath, `Billing & Delivery Address,,${dataCustomers.johnDoe.firstName}`
-          + ` ${dataCustomers.johnDoe.lastName},${Addresses.second.company},${Addresses.second.address},`
-          + `${Addresses.second.secondAddress},${Addresses.second.postalCode} ${Addresses.second.city}`
-          + `,${Addresses.second.country},${Addresses.second.phone},,`);
+        const isVisible = await utilsFile.isTextInPDF(filePath, `Billing & Delivery Address,,${dataCustomers.johnDoe.firstName}`
+          + ` ${dataCustomers.johnDoe.lastName},${dataAddresses.address_2.company},${dataAddresses.address_2.address},`
+          + `${dataAddresses.address_2.secondAddress},${dataAddresses.address_2.postalCode} ${dataAddresses.address_2.city}`
+          + `,${dataAddresses.address_2.country},${dataAddresses.address_2.phone},,`);
 
         expect(isVisible, 'Billing and delivery address are not correct!').to.eq(true);
       });
@@ -434,7 +432,7 @@ describe('FO - Account : Check order return PDF', async () => {
       it('should check the number of returned days', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkReturnedDays', baseContext);
 
-        const isVisible = await files.isTextInPDF(filePath, 'We have logged your return request.,Your package must '
+        const isVisible = await utilsFile.isTextInPDF(filePath, 'We have logged your return request.,Your package must '
           + 'be returned to us within 14 days of receiving your order.');
         expect(isVisible, 'returned days number is not correct!').to.eq(true);
       });
@@ -442,8 +440,8 @@ describe('FO - Account : Check order return PDF', async () => {
       it('should check the returned product', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'checkReturnedProduct', baseContext);
 
-        const isVisible = await files.isTextInPDF(filePath, 'Items to be returned, ,Reference, ,Qty,,'
-          + `${Products.demo_1.name} (Size: S - Color: White), ,${Products.demo_1.reference}, ,1`);
+        const isVisible = await utilsFile.isTextInPDF(filePath, 'Items to be returned, ,Reference, ,Qty,,'
+          + `${dataProducts.demo_1.name} (Size: S - Color: White), ,${dataProducts.demo_1.reference}, ,1`);
 
         expect(isVisible, 'returned product list is not correct!').to.eq(true);
       });
@@ -454,5 +452,5 @@ describe('FO - Account : Check order return PDF', async () => {
   disableMerchandiseReturns(`${baseContext}_postTest_1`);
 
   // Post-condition : Uninstall Hummingbird
-  uninstallHummingbird(`${baseContext}_postTest_2`);
+  disableHummingbird(`${baseContext}_postTest_2`);
 });

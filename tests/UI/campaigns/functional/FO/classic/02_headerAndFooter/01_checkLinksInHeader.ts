@@ -1,23 +1,19 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import FO pages
-import {cartPage} from '@pages/FO/classic/cart';
-import {contactUsPage} from '@pages/FO/classic/contactUs';
-import {homePage} from '@pages/FO/classic/home';
-import {loginPage} from '@pages/FO/classic/login';
-import {myAccountPage} from '@pages/FO/classic/myAccount';
-import {blockCartModal} from '@pages/FO/classic/modal/blockCart';
-import {quickViewModal} from '@pages/FO/classic/modal/quickView';
+import {expect} from 'chai';
 
 import {
-  // Import data
+  type BrowserContext,
   dataCustomers,
+  foClassicCartPage,
+  foClassicContactUsPage,
+  foClassicHomePage,
+  foClassicLoginPage,
+  foClassicModalBlockCartPage,
+  foClassicModalQuickViewPage,
+  foClassicMyAccountPage,
+  type Page,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_FO_classic_headerAndFooter_checkLinksInHeader';
 
@@ -37,20 +33,20 @@ describe('FO - Header and Footer : Check links in header page', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should go to FO home page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToFO', baseContext);
 
-    await homePage.goToFo(page);
+    await foClassicHomePage.goToFo(page);
 
-    const isHomePage = await homePage.isHomePage(page);
+    const isHomePage = await foClassicHomePage.isHomePage(page);
     expect(isHomePage).to.eq(true);
   });
 
@@ -58,51 +54,51 @@ describe('FO - Header and Footer : Check links in header page', async () => {
     await testContext.addContextItem(this, 'testIdentifier', 'checkContactUsHeaderLink', baseContext);
 
     // Check Contact us
-    await homePage.clickOnHeaderLink(page, 'Contact us');
+    await foClassicHomePage.clickOnHeaderLink(page, 'Contact us');
 
-    const pageTitle = await contactUsPage.getPageTitle(page);
-    expect(pageTitle, 'Fail to open FO login page').to.contains(contactUsPage.pageTitle);
+    const pageTitle = await foClassicContactUsPage.getPageTitle(page);
+    expect(pageTitle, 'Fail to open FO login page').to.contains(foClassicContactUsPage.pageTitle);
   });
 
   it('should check \'sign in\' link', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkSignInLink', baseContext);
 
     // Check sign in link
-    await homePage.clickOnHeaderLink(page, 'Sign in');
+    await foClassicHomePage.clickOnHeaderLink(page, 'Sign in');
 
-    const pageTitle = await loginPage.getPageTitle(page);
-    expect(pageTitle).to.equal(loginPage.pageTitle);
+    const pageTitle = await foClassicLoginPage.getPageTitle(page);
+    expect(pageTitle).to.equal(foClassicLoginPage.pageTitle);
   });
 
   it('should sign in by default customer', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'signInFO', baseContext);
 
     // Sign in
-    await loginPage.customerLogin(page, dataCustomers.johnDoe);
+    await foClassicLoginPage.customerLogin(page, dataCustomers.johnDoe);
 
-    const isCustomerConnected = await loginPage.isCustomerConnected(page);
+    const isCustomerConnected = await foClassicLoginPage.isCustomerConnected(page);
     expect(isCustomerConnected, 'Customer is not connected!').to.eq(true);
   });
 
   it('should check my account link', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkMyAccountLink', baseContext);
 
-    await loginPage.goToMyAccountPage(page);
+    await foClassicLoginPage.goToMyAccountPage(page);
 
-    const pageTitle = await myAccountPage.getPageTitle(page);
-    expect(pageTitle).to.equal(myAccountPage.pageTitle);
+    const pageTitle = await foClassicMyAccountPage.getPageTitle(page);
+    expect(pageTitle).to.equal(foClassicMyAccountPage.pageTitle);
   });
 
   it('should add a product to cart by quick view', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'addProductToCart', baseContext);
 
-    await loginPage.goToHomePage(page);
+    await foClassicLoginPage.goToHomePage(page);
     // Add product to cart by quick view
-    await homePage.quickViewProduct(page, 1);
-    await quickViewModal.setQuantityAndAddToCart(page, 3);
+    await foClassicHomePage.quickViewProduct(page, 1);
+    await foClassicModalQuickViewPage.setQuantityAndAddToCart(page, 3);
 
     // Close block cart modal
-    const isQuickViewModalClosed = await blockCartModal.closeBlockCartModal(page);
+    const isQuickViewModalClosed = await foClassicModalBlockCartPage.closeBlockCartModal(page);
     expect(isQuickViewModalClosed).to.eq(true);
   });
 
@@ -110,18 +106,18 @@ describe('FO - Header and Footer : Check links in header page', async () => {
     await testContext.addContextItem(this, 'testIdentifier', 'checkShoppingCartLink', baseContext);
 
     // Check cart link
-    await homePage.clickOnHeaderLink(page, 'Cart');
+    await foClassicHomePage.clickOnHeaderLink(page, 'Cart');
 
-    const pageTitle = await cartPage.getPageTitle(page);
-    expect(pageTitle).to.equal(cartPage.pageTitle);
+    const pageTitle = await foClassicCartPage.getPageTitle(page);
+    expect(pageTitle).to.equal(foClassicCartPage.pageTitle);
   });
 
   it('should go to home page and check the notification number', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkNotificationNumber1', baseContext);
 
-    await loginPage.goToHomePage(page);
+    await foClassicLoginPage.goToHomePage(page);
 
-    const notificationsNumber = await homePage.getCartNotificationsNumber(page);
+    const notificationsNumber = await foClassicHomePage.getCartNotificationsNumber(page);
     expect(notificationsNumber, 'Notification number is not equal to 3!').to.be.equal(3);
   });
 
@@ -129,25 +125,25 @@ describe('FO - Header and Footer : Check links in header page', async () => {
     await testContext.addContextItem(this, 'testIdentifier', 'checkSignOutLink', baseContext);
 
     // Sign out
-    await homePage.logout(page);
+    await foClassicHomePage.logout(page);
 
-    const isCustomerConnected = await homePage.isCustomerConnected(page);
+    const isCustomerConnected = await foClassicHomePage.isCustomerConnected(page);
     expect(isCustomerConnected, 'Customer is connected!').to.eq(false);
   });
 
   it('should check that the cart is empty', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkNotificationNumber2', baseContext);
 
-    const notificationsNumber = await homePage.getCartNotificationsNumber(page);
+    const notificationsNumber = await foClassicHomePage.getCartNotificationsNumber(page);
     expect(notificationsNumber, 'The cart is not empty!').to.be.equal(0);
   });
 
   it('should check \'Logo\' link', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkLogoLink', baseContext);
 
-    await homePage.clickOnHeaderLink(page, 'Logo', false);
+    await foClassicHomePage.clickOnHeaderLink(page, 'Logo', false);
 
-    const pageTitle = await homePage.getPageTitle(page);
-    expect(pageTitle).to.equal(homePage.pageTitle);
+    const pageTitle = await foClassicHomePage.getPageTitle(page);
+    expect(pageTitle).to.equal(foClassicHomePage.pageTitle);
   });
 });

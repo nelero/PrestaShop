@@ -25,9 +25,6 @@
  */
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 
-/**
- * @since 1.5.0
- */
 class DispatcherCore
 {
     /**
@@ -66,8 +63,8 @@ class DispatcherCore
             'keywords' => [
                 'id' => ['regexp' => '[0-9]+', 'param' => 'id_category'],
                 'rewrite' => ['regexp' => self::REWRITE_PATTERN],
-                'meta_keywords' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'meta_title' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
+                'categories' => ['regexp' => '[/_a-zA-Z0-9-\pL]*'],
             ],
         ],
         'supplier_rule' => [
@@ -76,7 +73,6 @@ class DispatcherCore
             'keywords' => [
                 'id' => ['regexp' => '[0-9]+', 'param' => 'id_supplier'],
                 'rewrite' => ['regexp' => self::REWRITE_PATTERN],
-                'meta_keywords' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'meta_title' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
             ],
         ],
@@ -86,7 +82,6 @@ class DispatcherCore
             'keywords' => [
                 'id' => ['regexp' => '[0-9]+', 'param' => 'id_manufacturer'],
                 'rewrite' => ['regexp' => self::REWRITE_PATTERN],
-                'meta_keywords' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'meta_title' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
             ],
         ],
@@ -96,7 +91,6 @@ class DispatcherCore
             'keywords' => [
                 'id' => ['regexp' => '[0-9]+', 'param' => 'id_cms'],
                 'rewrite' => ['regexp' => self::REWRITE_PATTERN],
-                'meta_keywords' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'meta_title' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
             ],
         ],
@@ -106,7 +100,6 @@ class DispatcherCore
             'keywords' => [
                 'id' => ['regexp' => '[0-9]+', 'param' => 'id_cms_category'],
                 'rewrite' => ['regexp' => self::REWRITE_PATTERN],
-                'meta_keywords' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'meta_title' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
             ],
         ],
@@ -123,7 +116,7 @@ class DispatcherCore
         ],
         'product_rule' => [
             'controller' => 'product',
-            'rule' => '{category:/}{id}{-:id_product_attribute}-{rewrite}{-:ean13}.html',
+            'rule' => '{id}{-:id_product_attribute}-{rewrite}.html',
             'keywords' => [
                 'id' => ['regexp' => '[0-9]+', 'param' => 'id_product'],
                 'id_product_attribute' => ['regexp' => '[0-9]*+', 'param' => 'id_product_attribute'],
@@ -132,7 +125,6 @@ class DispatcherCore
                 'category' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'categories' => ['regexp' => '[/_a-zA-Z0-9-\pL]*'],
                 'reference' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
-                'meta_keywords' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'meta_title' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'manufacturer' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
                 'supplier' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
@@ -538,14 +530,18 @@ class DispatcherCore
             );
         }
 
-        // If there are several languages, set $_GET['isolang'] and remove the language part from the request URI
-        if (
-            $this->use_routes
-            && $isMultiLanguageActivated
-            && preg_match('#^/([a-z]{2})(?:/.*)?$#', $requestUri, $matches)
-        ) {
-            $_GET['isolang'] = $matches[1];
-            $requestUri = substr($requestUri, 3);
+        // If friendly URLs are activated and there are more than one languages on the shop, we handle the language
+        // Set $_GET['isolang'] and remove the language part from the request URI
+        if ($this->use_routes && $isMultiLanguageActivated) {
+            // If we find a language in the URL, we assign it and remove it from the URL
+            if (preg_match('#^/([a-z]{2})(?:/.*)?$#', $requestUri, $matches)) {
+                $_GET['isolang'] = $matches[1];
+                $requestUri = substr($requestUri, 3);
+            // Otherwise, we use the default language
+            } else {
+                $defaultLanguage = new Language((int) Configuration::get('PS_LANG_DEFAULT'));
+                $_GET['isolang'] = $defaultLanguage->iso_code;
+            }
         }
 
         return $requestUri;
@@ -748,6 +744,20 @@ class DispatcherCore
             $keywords = $transform_keywords;
         }
 
+        /*
+         * Now, we will add one optional / to the end of the regexp. This will allow to match
+         * both slashed and non-slashed variant of the URL. The user will be automatically redirected
+         * to the proper canonical variant in the controller, but he won't get a 404.
+         */
+        if (substr($regexp, -1) == '/') {
+            // If the expression ends with a slash, we make it optional.
+            $regexp .= '?';
+        } else {
+            // If not, we add the optional slash.
+            $regexp .= '/?';
+        }
+
+        // Add some static rules to the regexp for all routes
         $regexp = '#^/' . $regexp . '$#u';
 
         return [
@@ -890,28 +900,42 @@ class DispatcherCore
     }
 
     /**
-     * Check if a route rule contain all required keywords of default route definition.
+     * Check if a route rule contain all required keywords and if all keywords exist for default route definition.
      *
      * @param string $route_id
      * @param string $rule Rule to verify
-     * @param array $errors List of missing keywords
+     * @param array $errors List of missing or unknown keywords
      *
      * @return bool
      */
     public function validateRoute($route_id, $rule, &$errors = [])
     {
-        $errors = [];
+        $errors = [
+            'missing' => [],
+            'unknown' => [],
+        ];
         if (!isset($this->default_routes[$route_id])) {
             return false;
         }
 
-        foreach ($this->default_routes[$route_id]['keywords'] as $keyword => $data) {
-            if (isset($data['param']) && !preg_match('#\{([^{}]*:)?' . $keyword . '(:[^{}]*)?\}#', $rule)) {
-                $errors[] = $keyword;
+        preg_match_all('/\{(?:\/:)?([\w_]+)\}/', $rule, $matches);
+        $found_keywords = $matches[1];
+
+        $expected_keywords = array_keys($this->default_routes[$route_id]['keywords']);
+
+        foreach ($found_keywords as $keyword) {
+            if (!in_array($keyword, $expected_keywords)) {
+                $errors['unknown'][] = $keyword;
             }
         }
 
-        return (count($errors)) ? false : true;
+        foreach ($this->default_routes[$route_id]['keywords'] as $keyword => $data) {
+            if (isset($data['param']) && !preg_match('#\{([^{}]*:)?' . $keyword . '(:[^{}]*)?\}#', $rule)) {
+                $errors['missing'][] = $keyword;
+            }
+        }
+
+        return empty($errors['missing']) && empty($errors['unknown']);
     }
 
     /**

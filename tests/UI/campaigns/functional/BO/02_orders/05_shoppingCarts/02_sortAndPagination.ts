@@ -1,30 +1,26 @@
 // Import utils
-import basicHelper from '@utils/basicHelper';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
 
 // Import commonTests
 import {bulkDeleteCustomersTest} from '@commonTests/BO/customers/customer';
-import loginCommon from '@commonTests/BO/loginBO';
 import {createOrderByGuestTest} from '@commonTests/FO/classic/order';
 
-// Import pages
-import dashboardPage from '@pages/BO/dashboard';
-import shoppingCartsPage from '@pages/BO/orders/shoppingCarts';
-
-// Import data
-import Products from '@data/demo/products';
-import OrderData from '@data/faker/order';
-
 import {
-  // Import data
+  boDashboardPage,
+  boLoginPage,
+  boShoppingCartsPage,
+  type BrowserContext,
   dataPaymentMethods,
+  dataProducts,
   FakerAddress,
   FakerCustomer,
+  FakerOrder,
+  type Page,
+  utilsCore,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
 
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_orders_shoppingCarts_sortAndPagination';
 
@@ -44,11 +40,11 @@ describe('BO - Orders - Shopping carts : Sort and pagination shopping carts', as
   const addressData: FakerAddress = new FakerAddress({country: 'France'});
   const customerData: FakerCustomer = new FakerCustomer({password: '', lastName: 'guest'});
   // New order by guest data
-  const orderByGuestData: OrderData = new OrderData({
+  const orderByGuestData: FakerOrder = new FakerOrder({
     customer: customerData,
     products: [
       {
-        product: Products.demo_1,
+        product: dataProducts.demo_1,
         quantity: 1,
       },
     ],
@@ -66,58 +62,64 @@ describe('BO - Orders - Shopping carts : Sort and pagination shopping carts', as
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   // 1 - Pagination
   describe('Pagination next and previous', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Orders > Shopping carts\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToShoppingCartsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.ordersParentLink,
-        dashboardPage.shoppingCartsLink,
+        boDashboardPage.ordersParentLink,
+        boDashboardPage.shoppingCartsLink,
       );
 
-      const pageTitle = await shoppingCartsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(shoppingCartsPage.pageTitle);
+      const pageTitle = await boShoppingCartsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boShoppingCartsPage.pageTitle);
     });
 
     it('should change the items number to 20 per page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'changeItemNumberTo20', baseContext);
 
-      const paginationNumber = await shoppingCartsPage.selectPaginationLimit(page, 20);
+      const paginationNumber = await boShoppingCartsPage.selectPaginationLimit(page, 20);
       expect(paginationNumber).to.contains('(page 1 / 2)');
     });
 
     it('should click on next', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnNext', baseContext);
 
-      const paginationNumber = await shoppingCartsPage.paginationNext(page);
+      const paginationNumber = await boShoppingCartsPage.paginationNext(page);
       expect(paginationNumber).to.contains('(page 2 / 2)');
     });
 
     it('should click on previous', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnPrevious', baseContext);
 
-      const paginationNumber = await shoppingCartsPage.paginationPrevious(page);
+      const paginationNumber = await boShoppingCartsPage.paginationPrevious(page);
       expect(paginationNumber).to.contains('(page 1 / 2)');
     });
 
     it('should change the items number to 300 per page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'changeItemNumberTo300', baseContext);
 
-      const paginationNumber = await shoppingCartsPage.selectPaginationLimit(page, 100);
+      const paginationNumber = await boShoppingCartsPage.selectPaginationLimit(page, 100);
       expect(paginationNumber).to.contains('(page 1 / 1)');
     });
   });
@@ -127,9 +129,9 @@ describe('BO - Orders - Shopping carts : Sort and pagination shopping carts', as
     it('should filter by customer lastName start by \'guest\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterToSort', baseContext);
 
-      await shoppingCartsPage.filterTable(page, 'input', 'customer_name', 'guest');
+      await boShoppingCartsPage.filterTable(page, 'input', 'customer_name', 'guest');
 
-      const textColumn = await shoppingCartsPage.getTextColumn(page, 1, 'customer_name');
+      const textColumn = await boShoppingCartsPage.getTextColumn(page, 1, 'customer_name');
       expect(textColumn).to.contains(customerData.lastName);
     });
 
@@ -190,17 +192,17 @@ describe('BO - Orders - Shopping carts : Sort and pagination shopping carts', as
       it(`should sort by '${test.args.sortBy}' '${test.args.sortDirection}' and check result`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', test.args.testIdentifier, baseContext);
 
-        const nonSortedTable = await shoppingCartsPage.getAllRowsColumnContent(page, test.args.sortBy);
+        const nonSortedTable = await boShoppingCartsPage.getAllRowsColumnContent(page, test.args.sortBy);
 
-        await shoppingCartsPage.sortTable(page, test.args.sortBy, test.args.sortDirection);
+        await boShoppingCartsPage.sortTable(page, test.args.sortBy, test.args.sortDirection);
 
-        const sortedTable = await shoppingCartsPage.getAllRowsColumnContent(page, test.args.sortBy);
+        const sortedTable = await boShoppingCartsPage.getAllRowsColumnContent(page, test.args.sortBy);
 
         if (test.args.isFloat) {
           const nonSortedTableFloat: number[] = nonSortedTable.map((text:string): number => parseFloat(text));
           const sortedTableFloat: number[] = sortedTable.map((text:string): number => parseFloat(text));
 
-          const expectedResult = await basicHelper.sortArrayNumber(nonSortedTableFloat);
+          const expectedResult = await utilsCore.sortArrayNumber(nonSortedTableFloat);
 
           if (test.args.sortDirection === 'asc') {
             expect(sortedTableFloat).to.deep.equal(expectedResult);
@@ -208,7 +210,7 @@ describe('BO - Orders - Shopping carts : Sort and pagination shopping carts', as
             expect(sortedTableFloat).to.deep.equal(expectedResult.reverse());
           }
         } else {
-          const expectedResult: string[] = await basicHelper.sortArray(nonSortedTable);
+          const expectedResult: string[] = await utilsCore.sortArray(nonSortedTable);
 
           if (test.args.sortDirection === 'asc') {
             expect(sortedTable).to.deep.equal(expectedResult);
@@ -222,7 +224,7 @@ describe('BO - Orders - Shopping carts : Sort and pagination shopping carts', as
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetAfterSort', baseContext);
 
-      const numberOfShoppingCartsAfterReset = await shoppingCartsPage.resetAndGetNumberOfLines(page);
+      const numberOfShoppingCartsAfterReset = await boShoppingCartsPage.resetAndGetNumberOfLines(page);
       expect(numberOfShoppingCartsAfterReset).to.be.above(1);
     });
   });

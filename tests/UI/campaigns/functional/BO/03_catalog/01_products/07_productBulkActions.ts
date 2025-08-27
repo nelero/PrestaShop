@@ -1,20 +1,16 @@
-// Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-
-// Import common tests
-import loginCommon from '@commonTests/BO/loginBO';
-
-// Import pages
-import dashboardPage from '@pages/BO/dashboard';
-import productsPage from '@pages/BO/catalog/products';
-import createProductsPage from '@pages/BO/catalog/products/add';
-
-// Import data
-import ProductFaker from '@data/faker/product';
-
-import type {BrowserContext, Page} from 'playwright';
 import {expect} from 'chai';
+
+import {
+  boDashboardPage,
+  boLoginPage,
+  boProductsPage,
+  boProductsCreatePage,
+  type BrowserContext,
+  FakerProduct,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_BO_catalog_products_productBulkActions';
 
@@ -24,14 +20,14 @@ describe('BO - Catalog - Products : Enable, disable, duplicate and Delete produc
   let numberOfProducts: number = 0;
 
   // Data to create first product
-  const firstProductData: ProductFaker = new ProductFaker({
+  const firstProductData: FakerProduct = new FakerProduct({
     name: 'myFavoriteProduct1',
     type: 'standard',
     status: true,
   });
 
   // Data to create second product
-  const secondProductData: ProductFaker = new ProductFaker({
+  const secondProductData: FakerProduct = new FakerProduct({
     name: 'myFavoriteProduct2',
     type: 'standard',
     status: true,
@@ -39,73 +35,79 @@ describe('BO - Catalog - Products : Enable, disable, duplicate and Delete produc
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Create first product', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Catalog > Products\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToProductsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.catalogParentLink,
-        dashboardPage.productsLink,
+        boDashboardPage.catalogParentLink,
+        boDashboardPage.productsLink,
       );
 
-      await productsPage.closeSfToolBar(page);
+      await boProductsPage.closeSfToolBar(page);
 
-      const pageTitle = await productsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(productsPage.pageTitle);
+      const pageTitle = await boProductsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsPage.pageTitle);
     });
 
     it('should reset filter and get number of products', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'getNumberOfProduct', baseContext);
 
-      numberOfProducts = await productsPage.resetAndGetNumberOfLines(page);
+      numberOfProducts = await boProductsPage.resetAndGetNumberOfLines(page);
       expect(numberOfProducts).to.be.above(0);
     });
 
     it('should click on \'New product\' button and check new product modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewProductButton', baseContext);
 
-      const isModalVisible = await productsPage.clickOnNewProductButton(page);
+      const isModalVisible = await boProductsPage.clickOnNewProductButton(page);
       expect(isModalVisible).to.eq(true);
     });
 
     it('should choose \'Standard product\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'chooseStandardProduct', baseContext);
 
-      await productsPage.selectProductType(page, firstProductData.type);
+      await boProductsPage.selectProductType(page, firstProductData.type);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should go to new product page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToNewProductPage', baseContext);
 
-      await productsPage.clickOnAddNewProduct(page);
+      await boProductsPage.clickOnAddNewProduct(page);
 
-      const pageTitle = await createProductsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(createProductsPage.pageTitle);
+      const pageTitle = await boProductsCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsCreatePage.pageTitle);
     });
 
     it('should create standard product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createStandardProduct', baseContext);
 
-      await createProductsPage.closeSfToolBar(page);
+      await boProductsCreatePage.closeSfToolBar(page);
 
-      const createProductMessage = await createProductsPage.setProduct(page, firstProductData);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.setProduct(page, firstProductData);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
   });
 
@@ -113,26 +115,26 @@ describe('BO - Catalog - Products : Enable, disable, duplicate and Delete produc
     it('should click on \'New product\' button and check new product modal', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnNewProductButton2', baseContext);
 
-      const isModalVisible = await createProductsPage.clickOnNewProductButton(page);
+      const isModalVisible = await boProductsCreatePage.clickOnNewProductButton(page);
       expect(isModalVisible).to.eq(true);
     });
 
     it('should choose \'Standard product\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'chooseStandardProduct2', baseContext);
 
-      await createProductsPage.chooseProductType(page, secondProductData.type);
+      await boProductsCreatePage.chooseProductType(page, secondProductData.type);
 
-      const isIframeVisible = await createProductsPage.isChooseProductIframeVisible(page);
+      const isIframeVisible = await boProductsCreatePage.isChooseProductIframeVisible(page);
       expect(isIframeVisible).to.eq(false);
     });
 
     it('should create product', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createSecondProduct', baseContext);
 
-      await createProductsPage.closeSfToolBar(page);
+      await boProductsCreatePage.closeSfToolBar(page);
 
-      const createProductMessage = await createProductsPage.setProduct(page, secondProductData);
-      expect(createProductMessage).to.equal(createProductsPage.successfulUpdateMessage);
+      const createProductMessage = await boProductsCreatePage.setProduct(page, secondProductData);
+      expect(createProductMessage).to.equal(boProductsCreatePage.successfulUpdateMessage);
     });
   });
 
@@ -140,21 +142,21 @@ describe('BO - Catalog - Products : Enable, disable, duplicate and Delete produc
     it('should click on \'Go to catalog\' button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCatalogPage', baseContext);
 
-      await createProductsPage.goToCatalogPage(page);
+      await boProductsCreatePage.goToCatalogPage(page);
 
-      const pageTitle = await productsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(productsPage.pageTitle);
+      const pageTitle = await boProductsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boProductsPage.pageTitle);
     });
 
     it('should filter list by \'Name\' and check result', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterListByReference', baseContext);
 
-      await productsPage.filterProducts(page, 'product_name', 'myFavoriteProduct', 'input');
+      await boProductsPage.filterProducts(page, 'product_name', 'myFavoriteProduct', 'input');
 
-      const numberOfProductsAfterFilter: number = await productsPage.getNumberOfProductsFromList(page);
+      const numberOfProductsAfterFilter: number = await boProductsPage.getNumberOfProductsFromList(page);
       expect(numberOfProductsAfterFilter).to.equal(2);
 
-      const textColumn = await productsPage.getTextColumn(page, 'product_name', 1);
+      const textColumn = await boProductsPage.getTextColumn(page, 'product_name', 1);
       expect(textColumn).to.contains('myFavoriteProduct');
     });
   });
@@ -193,21 +195,21 @@ describe('BO - Catalog - Products : Enable, disable, duplicate and Delete produc
       it('should select the 2 products', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `selectProducts${index}`, baseContext);
 
-        const isBulkDeleteButtonEnabled = await productsPage.bulkSelectProducts(page);
+        const isBulkDeleteButtonEnabled = await boProductsPage.bulkSelectProducts(page);
         expect(isBulkDeleteButtonEnabled).to.eq(true);
       });
 
       it('should click on bulk actions button', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `clickOnBulkActionsButton${index}`, baseContext);
 
-        const textMessage = await productsPage.clickOnBulkActionsProducts(page, test.args.action);
+        const textMessage = await boProductsPage.clickOnBulkActionsProducts(page, test.args.action);
         expect(textMessage).to.equal(`${test.args.message} ${test.args.productsNumber} products`);
       });
 
       it(`should bulk ${test.args.action} products`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `bulk${test.args.action}Product`, baseContext);
 
-        const textMessage = await productsPage.bulkActionsProduct(page, test.args.action);
+        const textMessage = await boProductsPage.bulkActionsProduct(page, test.args.action);
         expect(textMessage).to.equal(
           `${test.args.message} ${test.args.productsNumber} / ${test.args.productsNumber} products`);
       });
@@ -215,7 +217,7 @@ describe('BO - Catalog - Products : Enable, disable, duplicate and Delete produc
       it('should close progress modal', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `close${test.args.action}ProgressModal`, baseContext);
 
-        const isModalVisible = await productsPage.closeBulkActionsProgressModal(page, test.args.action);
+        const isModalVisible = await boProductsPage.closeBulkActionsProgressModal(page, test.args.action);
         expect(isModalVisible).to.eq(true);
       });
 
@@ -223,7 +225,7 @@ describe('BO - Catalog - Products : Enable, disable, duplicate and Delete produc
         it('should reset filter and get number of products', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'checkNumberOfProduct', baseContext);
 
-          const numberOfProductAfterBulkActions = await productsPage.resetAndGetNumberOfLines(page);
+          const numberOfProductAfterBulkActions = await boProductsPage.resetAndGetNumberOfLines(page);
           expect(numberOfProductAfterBulkActions).to.be.equal(numberOfProducts);
         });
       }

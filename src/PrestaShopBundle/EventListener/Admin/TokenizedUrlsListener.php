@@ -28,12 +28,14 @@ namespace PrestaShopBundle\EventListener\Admin;
 
 use PrestaShop\PrestaShop\Core\Feature\TokenInUrls;
 use PrestaShop\PrestaShop\Core\Util\Url\UrlCleaner;
-use PrestaShopBundle\Routing\LegacyControllerConstants;
+use PrestaShopBundle\Security\Admin\RequestAttributes;
 use PrestaShopBundle\Security\Admin\UserTokenManager;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpKernel\Event\KernelEvent;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\Security\Core\Authorization\Voter\AuthenticatedVoter;
+use Symfony\Component\Security\Http\AccessMapInterface;
 
 /**
  * Each Symfony url is automatically tokenized to avoid CSRF fails using XSS failures.
@@ -42,29 +44,17 @@ use Symfony\Component\Routing\RouterInterface;
  */
 class TokenizedUrlsListener
 {
-    public const PUBLIC_ROUTES = [
-        'admin_login',
-        'admin_homepage',
-        'admin_request_password_reset',
-        'admin_reset_password',
-    ];
-
     public function __construct(
         private readonly RouterInterface $router,
         private readonly UserTokenManager $userTokenManager,
+        private readonly AccessMapInterface $map,
     ) {
     }
 
-    public function onKernelRequest(KernelEvent $event)
+    public function onKernelRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
-        $publicLegacyRoute = $event->getRequest()->attributes->get(LegacyControllerConstants::ANONYMOUS_ATTRIBUTE);
-
-        if (TokenInUrls::isDisabled() || $publicLegacyRoute) {
-            return;
-        }
-
-        if (!$event->isMainRequest() || !($event instanceof RequestEvent) || in_array($event->getRequest()->attributes->get('_route'), self::PUBLIC_ROUTES)) {
+        if (!$event->isMainRequest() || $this->isRequestAnonymous($request) || TokenInUrls::isDisabled()) {
             return;
         }
 
@@ -86,5 +76,17 @@ class TokenizedUrlsListener
             $response = new RedirectResponse($this->router->generate('admin_security_compromised', ['uri' => urlencode($uri)]));
             $event->setResponse($response);
         }
+    }
+
+    private function isRequestAnonymous(Request $request): bool
+    {
+        $publicLegacyRoute = $request->attributes->get(RequestAttributes::ANONYMOUS_CONTROLLER_ATTRIBUTE);
+        if ($publicLegacyRoute === true) {
+            return true;
+        }
+
+        [$attributes] = $this->map->getPatterns($request);
+
+        return $attributes && [AuthenticatedVoter::PUBLIC_ACCESS] === $attributes;
     }
 }

@@ -49,13 +49,33 @@ class ShopContext
         protected string $domainSSL,
         protected bool $active,
         protected bool $secured,
-        protected array $associatedShopIds
+        protected array $associatedShopIds,
+        protected bool $isMultiShopEnabled,
+        protected bool $isMultiShopUsed,
+        protected bool $groupSharingStocks,
+        protected bool $groupSharingCustomers,
+        protected bool $groupSharingOrders,
     ) {
     }
 
     public function getShopConstraint(): ShopConstraint
     {
         return $this->shopConstraint;
+    }
+
+    public function isAllShopContext(): bool
+    {
+        return $this->shopConstraint->forAllShops();
+    }
+
+    public function isShopGroupContext(): bool
+    {
+        return $this->shopConstraint->isShopGroupContext();
+    }
+
+    public function isSingleShopContext(): bool
+    {
+        return $this->shopConstraint->isSingleShopContext();
     }
 
     public function getId(): int
@@ -129,11 +149,36 @@ class ShopContext
         return $url . $this->getBaseURI();
     }
 
+    public function hasGroupSharingStocks(): bool
+    {
+        return $this->groupSharingStocks;
+    }
+
+    public function hasGroupSharingCustomers(): bool
+    {
+        return $this->groupSharingCustomers;
+    }
+
+    public function hasGroupSharingOrders(): bool
+    {
+        return $this->groupSharingOrders;
+    }
+
     /**
      * @return int[]
      */
     public function getAssociatedShopIds(): array
     {
         return $this->associatedShopIds;
+    }
+
+    public function isMultiShopEnabled(): bool
+    {
+        return $this->isMultiShopEnabled;
+    }
+
+    public function isMultiShopUsed(): bool
+    {
+        return $this->isMultiShopUsed;
     }
 }

@@ -27,6 +27,8 @@
 namespace PrestaShop\PrestaShop\Adapter\Image;
 
 use Category;
+use Configuration;
+use Context;
 use Image;
 use ImageManager;
 use ImageType;
@@ -185,13 +187,13 @@ class ImageRetriever
             $imageFolderPath = rtrim(_PS_CAT_IMG_DIR_, DIRECTORY_SEPARATOR);
         }
 
-        $urls = [];
-
         // Get path of original uploaded image we will use to get thumbnails (original image extension is always .jpg)
         $originalImagePath = implode(DIRECTORY_SEPARATOR, [
             $imageFolderPath,
             $id_image . '.jpg',
         ]);
+
+        $urls = [];
 
         /*
          * Let's resolve which formats we will use for image generation.
@@ -210,7 +212,9 @@ class ImageRetriever
         }
 
         // Check and generate each thumbnail size
-        $image_types = ImageType::getImagesTypes($type, true);
+        $currentTheme = Context::getContext()->shop->theme_name;
+        $image_types = ImageType::getImagesTypes($type, true, $currentTheme);
+
         foreach ($image_types as $image_type) {
             $sources = [];
             $formattedName = ImageType::getFormattedName('small');
@@ -353,25 +357,77 @@ class ImageRetriever
     public function getNoPictureImage(Language $language)
     {
         $urls = [];
-        $type = 'products';
-        $imageTypes = ImageType::getImagesTypes($type, true);
 
-        if (empty($imageTypes)) {
-            throw new PrestaShopException(sprintf('There is no image type defined for "%s".', $type));
-        }
+        // Set images to regenerate with all theirs specific directories
+        $objectsToRegenerate = [
+            ['type' => 'categories', 'dir' => _PS_CAT_IMG_DIR_],
+            ['type' => 'manufacturers', 'dir' => _PS_MANU_IMG_DIR_],
+            ['type' => 'suppliers', 'dir' => _PS_SUPP_IMG_DIR_],
+            ['type' => 'products', 'dir' => _PS_PRODUCT_IMG_DIR_],
+            ['type' => 'stores', 'dir' => _PS_STORE_IMG_DIR_],
+        ];
 
-        foreach ($imageTypes as $imageType) {
-            $url = $this->link->getImageLink(
-                '',
-                $language->iso_code . '-default',
-                $imageType['name']
-            );
+        // Get current theme
+        $currentTheme = Context::getContext()->shop->theme_name;
 
-            $urls[$imageType['name']] = [
-                'url' => $url,
-                'width' => (int) $imageType['width'],
-                'height' => (int) $imageType['height'],
-            ];
+        foreach ($objectsToRegenerate as $object) {
+            // Get all image types present on shops for this object
+            $imageTypes = ImageType::getImagesTypes($object['type'], true, $currentTheme);
+
+            // We get the "no image available" in the folder of the object
+            $originalImagePath = implode(DIRECTORY_SEPARATOR, [
+                rtrim($object['dir'], DIRECTORY_SEPARATOR),
+                $language->getIsoCode() . '.jpg',
+            ]);
+
+            if (!file_exists($originalImagePath)) {
+                // If it doesn't exist, we use an image for default language
+                $originalImagePath = implode(DIRECTORY_SEPARATOR, [
+                    rtrim($object['dir'], DIRECTORY_SEPARATOR),
+                    Language::getIsoById((int) Configuration::get('PS_LANG_DEFAULT')) . '.jpg',
+                ]);
+
+                if (!file_exists($originalImagePath)) {
+                    // If it doesn't exist, we use a fallback one in the root of img directory
+                    $originalImagePath = implode(DIRECTORY_SEPARATOR, [
+                        rtrim(_PS_IMG_DIR_, DIRECTORY_SEPARATOR),
+                        'noimageavailable.jpg',
+                    ]);
+                }
+            }
+
+            // Get all image sizes for product objects
+            foreach ($imageTypes as $imageType) {
+                // Get path of the final thumbnail
+                $resizedImagePath = implode(DIRECTORY_SEPARATOR, [
+                    rtrim($object['dir'], DIRECTORY_SEPARATOR),
+                    $language->getIsoCode() . '-default-' . $imageType['name'] . '.jpg',
+                ]);
+
+                // Check if the thumbnail exists and generate it if needed
+                if (!file_exists($resizedImagePath)) {
+                    ImageManager::resize(
+                        $originalImagePath,
+                        $resizedImagePath,
+                        (int) $imageType['width'],
+                        (int) $imageType['height']
+                    );
+                }
+
+                // Build image URL for that thumbnail
+                $imageUrl = $this->link->getImageLink(
+                    '',
+                    $language->iso_code . '-default',
+                    $imageType['name']
+                );
+
+                // And add it to the list
+                $urls[$imageType['name']] = [
+                    'url' => $imageUrl,
+                    'width' => (int) $imageType['width'],
+                    'height' => (int) $imageType['height'],
+                ];
+            }
         }
 
         uasort($urls, function (array $a, array $b) {

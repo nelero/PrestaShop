@@ -40,7 +40,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Composer Install
-        run: composer install --ansi --prefer-dist --no-interaction --no-progress
+        run: COMPOSER_PROCESS_TIMEOUT=600 composer install --ansi --prefer-dist --no-interaction --no-progress
 
       - name: Check bin/console can run without shop install and cache clear without app ID (only for admin job since it is the default value)
         if: matrix.app-id == 'admin'
@@ -99,11 +99,18 @@ jobs:
           PHP_VERSION: 8.1
           ENABLE_SSL: 'true'
           INSTALL_AUTO: 'false'
+      - name: Setup Environment failure
+        uses: ./.github/actions/setup-env-export-logs
+        with:
+          DOCKER_PREFIX: prestashop
+          ARTIFACT_NAME: setup-symfony-console-${{ matrix.app-id }}
+          ENABLE_SSL: 'true'
+          INSTALL_AUTO: 'false'
+        if: failure()
 
       # Retest the console after shop install
       - name: Check bin/console and cache:clear can run after shop install
         run: |
-          docker ps
           docker exec prestashop-prestashop-git-1 php ./bin/console --app-id=${{ matrix.app-id }}
           docker exec prestashop-prestashop-git-1 php -d memory_limit=-1 ./bin/console cache:clear --env=dev --app-id=${{ matrix.app-id }}
           docker exec prestashop-prestashop-git-1 php -d memory_limit=-1 ./bin/console cache:clear --env=prod --app-id=${{ matrix.app-id }}

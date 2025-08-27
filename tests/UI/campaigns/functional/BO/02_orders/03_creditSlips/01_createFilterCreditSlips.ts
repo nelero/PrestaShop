@@ -1,33 +1,29 @@
 // Import utils
-import date from '@utils/date';
-import files from '@utils/files';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
 
 // Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
 import {createOrderByCustomerTest} from '@commonTests/FO/classic/order';
 
-// Import BO pages
-import dashboardPage from '@pages/BO/dashboard';
-import creditSlipsPage from '@pages/BO/orders/creditSlips';
-import ordersPage from '@pages/BO/orders';
-import orderPageProductsBlock from '@pages/BO/orders/view/productsBlock';
-import orderPageTabListBlock from '@pages/BO/orders/view/tabListBlock';
-
-// Import data
-import Products from '@data/demo/products';
-import OrderData from '@data/faker/order';
-
 import {
-  // Import data
+  boCreditSlipsPage,
+  boDashboardPage,
+  boLoginPage,
+  boOrdersPage,
+  boOrdersViewBlockProductsPage,
+  boOrdersViewBlockTabListPage,
+  type BrowserContext,
   dataCustomers,
   dataOrderStatuses,
   dataPaymentMethods,
+  dataProducts,
+  FakerOrder,
+  type Page,
+  utilsDate,
+  utilsFile,
+  utilsPlaywright,
 } from '@prestashop-core/ui-testing';
 
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_orders_creditSlips_createFilterCreditSlips';
 
@@ -44,13 +40,13 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
   let page: Page;
   let numberOfCreditSlips: number = 0;
 
-  const todayDate: string = date.getDateFormat('yyyy-mm-dd');
-  const todayDateToCheck: string = date.getDateFormat('mm/dd/yyyy');
-  const orderByCustomerData: OrderData = new OrderData({
+  const todayDate: string = utilsDate.getDateFormat('yyyy-mm-dd');
+  const todayDateToCheck: string = utilsDate.getDateFormat('mm/dd/yyyy');
+  const orderByCustomerData: FakerOrder = new FakerOrder({
     customer: dataCustomers.johnDoe,
     products: [
       {
-        product: Products.demo_1,
+        product: dataProducts.demo_1,
         quantity: 5,
       },
     ],
@@ -62,45 +58,51 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   describe('Create 2 credit slips for the same order', async () => {
     it('should login in BO', async function () {
-      await loginCommon.loginBO(this, page);
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
     });
 
     it('should go to \'Orders > Orders\' page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToOrdersPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.ordersParentLink,
-        dashboardPage.ordersLink,
+        boDashboardPage.ordersParentLink,
+        boDashboardPage.ordersLink,
       );
 
-      const pageTitle = await ordersPage.getPageTitle(page);
-      expect(pageTitle).to.contains(ordersPage.pageTitle);
+      const pageTitle = await boOrdersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boOrdersPage.pageTitle);
     });
 
     it('should go to the first order page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCreatedOrderPage', baseContext);
 
-      await ordersPage.goToOrder(page, 1);
+      await boOrdersPage.goToOrder(page, 1);
 
-      const pageTitle = await orderPageTabListBlock.getPageTitle(page);
-      expect(pageTitle).to.contains(orderPageTabListBlock.pageTitle);
+      const pageTitle = await boOrdersViewBlockTabListPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boOrdersViewBlockTabListPage.pageTitle);
     });
 
     it(`should change the order status to '${dataOrderStatuses.shipped.name}' and check it`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateCreatedOrderStatus', baseContext);
 
-      const result = await orderPageTabListBlock.modifyOrderStatus(page, dataOrderStatuses.shipped.name);
+      const result = await boOrdersViewBlockTabListPage.modifyOrderStatus(page, dataOrderStatuses.shipped.name);
       expect(result).to.equal(dataOrderStatuses.shipped.name);
     });
 
@@ -113,21 +115,21 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
       it(`should create the partial refund n°${index + 1}`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `addPartialRefund${index + 1}`, baseContext);
 
-        await orderPageTabListBlock.clickOnPartialRefund(page);
+        await boOrdersViewBlockTabListPage.clickOnPartialRefund(page);
 
-        const textMessage = await orderPageProductsBlock.addPartialRefundProduct(
+        const textMessage = await boOrdersViewBlockProductsPage.addPartialRefundProduct(
           page,
           test.args.productID,
           test.args.quantity,
         );
-        expect(textMessage).to.contains(orderPageProductsBlock.partialRefundValidationMessage);
+        expect(textMessage).to.contains(boOrdersViewBlockProductsPage.partialRefundValidationMessage);
       });
 
       it('should check the existence of the Credit slip document', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkCreditSlipDocument${index + 1}`, baseContext);
 
         // Get document name
-        const documentType = await orderPageTabListBlock.getDocumentType(page, test.args.documentRow);
+        const documentType = await boOrdersViewBlockTabListPage.getDocumentType(page, test.args.documentRow);
         expect(documentType).to.be.equal('Credit slip');
       });
     });
@@ -137,21 +139,21 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
     it('should go to Credit slips page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToCreditSlipsPage', baseContext);
 
-      await dashboardPage.goToSubMenu(
+      await boDashboardPage.goToSubMenu(
         page,
-        dashboardPage.ordersParentLink,
-        dashboardPage.creditSlipsLink,
+        boDashboardPage.ordersParentLink,
+        boDashboardPage.creditSlipsLink,
       );
-      await creditSlipsPage.closeSfToolBar(page);
+      await boCreditSlipsPage.closeSfToolBar(page);
 
-      const pageTitle = await creditSlipsPage.getPageTitle(page);
-      expect(pageTitle).to.contains(creditSlipsPage.pageTitle);
+      const pageTitle = await boCreditSlipsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCreditSlipsPage.pageTitle);
     });
 
     it('should reset all filters and get number of credit slips', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirst', baseContext);
 
-      numberOfCreditSlips = await creditSlipsPage.resetAndGetNumberOfLines(page);
+      numberOfCreditSlips = await boCreditSlipsPage.resetAndGetNumberOfLines(page);
       expect(numberOfCreditSlips).to.be.above(0);
     });
 
@@ -180,18 +182,18 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
       it(`should filter by ${test.args.filterBy} '${test.args.filterValue}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', test.args.testIdentifier, baseContext);
 
-        await creditSlipsPage.filterCreditSlips(
+        await boCreditSlipsPage.filterCreditSlips(
           page,
           test.args.filterBy,
           test.args.filterValue,
         );
 
         // Get number of credit slips
-        const numberOfCreditSlipsAfterFilter = await creditSlipsPage.getNumberOfElementInGrid(page);
+        const numberOfCreditSlipsAfterFilter = await boCreditSlipsPage.getNumberOfElementInGrid(page);
         expect(numberOfCreditSlipsAfterFilter).to.be.at.most(numberOfCreditSlips);
 
         for (let i = 1; i <= numberOfCreditSlipsAfterFilter; i++) {
-          const textColumn = await creditSlipsPage.getTextColumnFromTableCreditSlips(
+          const textColumn = await boCreditSlipsPage.getTextColumnFromTableCreditSlips(
             page,
             i,
             test.args.columnName,
@@ -203,7 +205,7 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
       it('should reset all filters', async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.testIdentifier}Reset`, baseContext);
 
-        const numberOfCreditSlipsAfterReset = await creditSlipsPage.resetAndGetNumberOfLines(page);
+        const numberOfCreditSlipsAfterReset = await boCreditSlipsPage.resetAndGetNumberOfLines(page);
         expect(numberOfCreditSlipsAfterReset).to.be.equal(numberOfCreditSlips);
       });
     });
@@ -212,14 +214,14 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
       await testContext.addContextItem(this, 'testIdentifier', 'filterDateIssued', baseContext);
 
       // Filter credit slips
-      await creditSlipsPage.filterCreditSlipsByDate(page, todayDate, todayDate);
+      await boCreditSlipsPage.filterCreditSlipsByDate(page, todayDate, todayDate);
 
       // Check number of element
-      const numberOfCreditSlipsAfterFilter = await creditSlipsPage.getNumberOfElementInGrid(page);
+      const numberOfCreditSlipsAfterFilter = await boCreditSlipsPage.getNumberOfElementInGrid(page);
       expect(numberOfCreditSlipsAfterFilter).to.be.at.most(numberOfCreditSlips);
 
       for (let i = 1; i <= numberOfCreditSlipsAfterFilter; i++) {
-        const textColumn = await creditSlipsPage.getTextColumnFromTableCreditSlips(page, i, 'date_add');
+        const textColumn = await boCreditSlipsPage.getTextColumnFromTableCreditSlips(page, i, 'date_add');
         expect(textColumn).to.contains(todayDateToCheck);
       }
     });
@@ -227,7 +229,7 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterDateIssuedReset', baseContext);
 
-      const numberOfCreditSlipsAfterReset = await creditSlipsPage.resetAndGetNumberOfLines(page);
+      const numberOfCreditSlipsAfterReset = await boCreditSlipsPage.resetAndGetNumberOfLines(page);
       expect(numberOfCreditSlipsAfterReset).to.be.equal(numberOfCreditSlips);
     });
   });
@@ -246,14 +248,14 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
         );
 
         // Filter credit slips
-        await creditSlipsPage.filterCreditSlips(
+        await boCreditSlipsPage.filterCreditSlips(
           page,
           'id_credit_slip',
           creditSlip.args.id,
         );
 
         // Check text column
-        const textColumn = await creditSlipsPage.getTextColumnFromTableCreditSlips(
+        const textColumn = await boCreditSlipsPage.getTextColumnFromTableCreditSlips(
           page,
           1,
           'id_order_slip',
@@ -264,9 +266,9 @@ describe('BO - Orders - Credit slips : Create, filter and check credit slips fil
       it(`should download the ${creditSlip.args.number} credit slip and check the file existence`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `download${creditSlip.args.number}`, baseContext);
 
-        const filePath = await creditSlipsPage.downloadCreditSlip(page);
+        const filePath = await boCreditSlipsPage.downloadCreditSlip(page);
 
-        const exist = await files.doesFileExist(filePath);
+        const exist = await utilsFile.doesFileExist(filePath);
         expect(exist).to.eq(true);
       });
     });

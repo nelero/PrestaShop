@@ -1,9 +1,11 @@
 // Import utils
-import helpers from '@utils/helpers';
 import testContext from '@utils/testContext';
 
 import {expect} from 'chai';
-import type {APIRequestContext} from 'playwright';
+import {
+  type APIRequestContext,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_API_basicTest';
 
@@ -11,7 +13,7 @@ describe('API : Basic Test', async () => {
   let apiContext: APIRequestContext;
 
   before(async () => {
-    apiContext = await helpers.createAPIContext(global.API.URL);
+    apiContext = await utilsPlaywright.createAPIContext(global.API.URL);
   });
 
   describe('Basic Test', async () => {
@@ -22,10 +24,10 @@ describe('API : Basic Test', async () => {
       expect(apiResponse.status()).to.eq(404);
     });
 
-    it('should request the endpoint /hook-status', async function () {
-      await testContext.addContextItem(this, 'testIdentifier', 'requestNewApiHookStatus', baseContext);
+    it('should request the endpoint /hooks', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'requestMethodNotAllowed', baseContext);
 
-      const apiResponse = await apiContext.get('hook-status');
+      const apiResponse = await apiContext.put('hooks');
       expect(apiResponse.status()).to.eq(405);
     });
   });

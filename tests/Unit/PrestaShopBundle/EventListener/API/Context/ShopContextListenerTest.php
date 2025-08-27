@@ -31,6 +31,7 @@ namespace Tests\Unit\PrestaShopBundle\EventListener\API\Context;
 use PHPUnit\Framework\MockObject\MockObject;
 use PrestaShop\PrestaShop\Adapter\Feature\MultistoreFeature;
 use PrestaShop\PrestaShop\Core\Context\ShopContextBuilder;
+use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopCollection;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
 use PrestaShopBundle\Controller\Api\OAuth2\AccessTokenController;
 use PrestaShopBundle\EventListener\API\Context\ShopContextListener;
@@ -42,6 +43,7 @@ class ShopContextListenerTest extends ContextEventListenerTestCase
 {
     private const DEFAULT_SHOP_ID = 42;
     private const QUERY_SHOP_ID = 51;
+    private const QUERY_SECOND_SHOP_ID = 99;
     private const QUERY_SHOP_GROUP_ID = 69;
 
     public function testShopContextWhenMultishopDisabled(): void
@@ -52,6 +54,7 @@ class ShopContextListenerTest extends ContextEventListenerTestCase
         $shopContextBuilder = new ShopContextBuilder(
             $this->mockShopRepository(self::DEFAULT_SHOP_ID),
             $this->mockContextStateManager(),
+            $this->mockMultistoreFeature(false)
         );
         $listener = new ShopContextListener(
             $shopContextBuilder,
@@ -80,6 +83,7 @@ class ShopContextListenerTest extends ContextEventListenerTestCase
         $shopContextBuilder = new ShopContextBuilder(
             $this->mockShopRepository(self::DEFAULT_SHOP_ID),
             $this->mockContextStateManager(),
+            $this->mockMultistoreFeature(true)
         );
         $listener = new ShopContextListener(
             $shopContextBuilder,
@@ -166,6 +170,42 @@ class ShopContextListenerTest extends ContextEventListenerTestCase
             ShopConstraint::allShops(),
             self::DEFAULT_SHOP_ID,
         ];
+
+        yield 'shop collection query parameter string list' => [
+            new Request(['shopIds' => self::QUERY_SHOP_ID . ',' . self::QUERY_SECOND_SHOP_ID]),
+            ShopCollection::shops([self::QUERY_SHOP_ID, self::QUERY_SECOND_SHOP_ID]),
+            self::QUERY_SHOP_ID,
+        ];
+
+        yield 'shop collection request parameter string list' => [
+            new Request([], ['shopIds' => self::QUERY_SECOND_SHOP_ID . ',' . self::QUERY_SHOP_ID]),
+            ShopCollection::shops([self::QUERY_SECOND_SHOP_ID, self::QUERY_SHOP_ID]),
+            self::QUERY_SECOND_SHOP_ID,
+        ];
+
+        yield 'shop collection attribute parameter string list' => [
+            new Request([], [], ['shopIds' => self::QUERY_SECOND_SHOP_ID . ', ' . self::QUERY_SHOP_ID]),
+            ShopCollection::shops([self::QUERY_SECOND_SHOP_ID, self::QUERY_SHOP_ID]),
+            self::QUERY_SECOND_SHOP_ID,
+        ];
+
+        yield 'shop collection query parameter array' => [
+            new Request(['shopIds' => [self::QUERY_SHOP_ID, self::QUERY_SECOND_SHOP_ID]]),
+            ShopCollection::shops([self::QUERY_SHOP_ID, self::QUERY_SECOND_SHOP_ID]),
+            self::QUERY_SHOP_ID,
+        ];
+
+        yield 'shop collection request parameter array' => [
+            new Request([], ['shopIds' => [self::QUERY_SECOND_SHOP_ID, self::QUERY_SHOP_ID]]),
+            ShopCollection::shops([self::QUERY_SECOND_SHOP_ID, self::QUERY_SHOP_ID]),
+            self::QUERY_SECOND_SHOP_ID,
+        ];
+
+        yield 'shop collection attribute parameter array' => [
+            new Request([], [], ['shopIds' => [self::QUERY_SECOND_SHOP_ID, self::QUERY_SHOP_ID]]),
+            ShopCollection::shops([self::QUERY_SECOND_SHOP_ID, self::QUERY_SHOP_ID]),
+            self::QUERY_SECOND_SHOP_ID,
+        ];
     }
 
     public function testMissingRequestParametersWhenMultishopIsEnabled(): void
@@ -176,6 +216,7 @@ class ShopContextListenerTest extends ContextEventListenerTestCase
         $shopContextBuilder = new ShopContextBuilder(
             $this->mockShopRepository(self::DEFAULT_SHOP_ID),
             $this->mockContextStateManager(),
+            $this->mockMultistoreFeature(true)
         );
         $listener = new ShopContextListener(
             $shopContextBuilder,

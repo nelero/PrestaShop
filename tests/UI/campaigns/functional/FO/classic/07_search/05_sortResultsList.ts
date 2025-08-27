@@ -1,14 +1,15 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import basicHelper from '@utils/basicHelper';
-
-// Import FO pages
-import {homePage} from '@pages/FO/classic/home';
-import {searchResultsPage} from '@pages/FO/classic/searchResults';
 
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
+import {
+  type BrowserContext,
+  foClassicHomePage,
+  foClassicSearchResultsPage,
+  type Page,
+  utilsCore,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'functional_FO_classic_search_sortResultsList';
 
@@ -27,43 +28,43 @@ describe('FO - Search Page : Sort results list', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   it('should go to FO', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToFO', baseContext);
 
-    await homePage.goToFo(page);
+    await foClassicHomePage.goToFo(page);
 
-    const isHomePage = await homePage.isHomePage(page);
+    const isHomePage = await foClassicHomePage.isHomePage(page);
     expect(isHomePage).to.eq(true);
   });
 
   it('should put \'Mug\' in the search input and check result', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'searchProduct1', baseContext);
 
-    await homePage.searchProduct(page, 'mug');
+    await foClassicHomePage.searchProduct(page, 'mug');
 
-    const pageTitle = await searchResultsPage.getPageTitle(page);
-    expect(pageTitle).to.equal(searchResultsPage.pageTitle);
+    const pageTitle = await foClassicSearchResultsPage.getPageTitle(page);
+    expect(pageTitle).to.equal(foClassicSearchResultsPage.pageTitle);
   });
 
   it('should check the search result page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'countResult', baseContext);
 
-    const countResults = await searchResultsPage.getSearchResultsNumber(page);
+    const countResults = await foClassicSearchResultsPage.getSearchResultsNumber(page);
     expect(countResults).to.equal(5);
   });
 
   it('should check that the products is sorted by relevance', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkDefaultSort', baseContext);
 
-    const isSortingLinkVisible = await searchResultsPage.getSortByValue(page);
+    const isSortingLinkVisible = await foClassicSearchResultsPage.getSortByValue(page);
     expect(isSortingLinkVisible).to.contain('Relevance');
   });
 
@@ -109,11 +110,11 @@ describe('FO - Search Page : Sort results list', async () => {
     it(`should sort by '${test.args.sortName}'`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', test.args.testIdentifier, baseContext);
 
-      const nonSortedTable = await searchResultsPage.getAllProductsAttribute(page, test.args.attribute);
-      await searchResultsPage.sortProductsList(page, test.args.sortBy);
-      const sortedTable = await searchResultsPage.getAllProductsAttribute(page, test.args.attribute);
+      const nonSortedTable = await foClassicSearchResultsPage.getAllProductsAttribute(page, test.args.attribute);
+      await foClassicSearchResultsPage.sortProductsList(page, test.args.sortBy);
+      const sortedTable = await foClassicSearchResultsPage.getAllProductsAttribute(page, test.args.attribute);
 
-      const expectedResult: string[] = await basicHelper.sortArray(nonSortedTable);
+      const expectedResult: string[] = await utilsCore.sortArray(nonSortedTable);
 
       if (test.args.sortDirection === 'asc') {
         expect(sortedTable).to.deep.equal(expectedResult);

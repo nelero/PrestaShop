@@ -1,8 +1,5 @@
 // Import utils
-import date from '@utils/date';
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
-import xml from '@utils/xml';
 
 // Import webservices
 import orderXml from '@webservices/order/orderXml';
@@ -10,37 +7,38 @@ import OrderWS from '@webservices/order/orderWs';
 
 // Import commonTests
 import {addWebserviceKey, removeWebserviceKey, setWebserviceStatus} from '@commonTests/BO/advancedParameters/ws';
-import loginCommon from '@commonTests/BO/loginBO';
 import createShoppingCart from '@commonTests/FO/classic/shoppingCart';
 
-// Import BO pages
-import webservicePage from '@pages/BO/advancedParameters/webservice';
-import dashboardPage from '@pages/BO/dashboard';
-import ordersPage from '@pages/BO/orders';
-import shoppingCartsPage from '@pages/BO/orders/shoppingCarts';
-import {viewOrderBasePage} from '@pages/BO/orders/view/viewOrderBasePage';
-import orderPageCustomerBlock from '@pages/BO/orders/view/customerBlock';
-import orderPagePaymentBlock from '@pages/BO/orders/view/paymentBlock';
-import orderPageProductsBlock from '@pages/BO/orders/view/productsBlock';
-import orderPageTabListBlock from '@pages/BO/orders/view/tabListBlock';
-
 // Import data
-import Address from '@data/demo/address';
-import Products from '@data/demo/products';
-import OrderData from '@data/faker/order';
-import {WebservicePermission} from '@data/types/webservice';
 import getOrderXml from '@data/xml/order';
 
 import {
-  // Import data
+  type APIRequestContext,
+  type APIResponse,
+  boDashboardPage,
+  boLoginPage,
+  boOrdersPage,
+  boOrdersViewBasePage,
+  boOrdersViewBlockCustomersPage,
+  boOrdersViewBlockPaymentsPage,
+  boOrdersViewBlockProductsPage,
+  boOrdersViewBlockTabListPage,
+  boShoppingCartsPage,
+  boWebservicesPage,
+  type BrowserContext,
+  dataAddresses,
   dataCustomers,
+  dataProducts,
+  FakerOrder,
+  type Page,
+  utilsDate,
+  utilsPlaywright,
+  utilsXML,
+  type WebservicePermission,
 } from '@prestashop-core/ui-testing';
 
 import {use, expect} from 'chai';
 import chaiString from 'chai-string';
-import type {
-  APIResponse, APIRequestContext, BrowserContext, Page,
-} from 'playwright';
 
 use(chaiString);
 
@@ -54,13 +52,13 @@ describe('WS - Orders : CRUD', async () => {
   let authorization: string = '';
   let idShoppingCart: number;
 
-  const orderByCustomerData: OrderData = new OrderData({
+  const orderByCustomerData: FakerOrder = new FakerOrder({
     customer: dataCustomers.johnDoe,
-    deliveryAddress: Address.second,
-    invoiceAddress: Address.third,
+    deliveryAddress: dataAddresses.address_2,
+    invoiceAddress: dataAddresses.address_5,
     products: [
       {
-        product: Products.demo_1,
+        product: dataProducts.demo_1,
         quantity: 1,
       },
     ],
@@ -79,14 +77,14 @@ describe('WS - Orders : CRUD', async () => {
 
   // before and after functions
   before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
+    browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+    page = await utilsPlaywright.newTab(browserContext);
 
-    apiContext = await helper.createAPIContext(global.FO.URL);
+    apiContext = await utilsPlaywright.createAPIContext(global.FO.URL);
   });
 
   after(async () => {
-    await helper.closeBrowserContext(browserContext);
+    await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
   // Enable webservice
@@ -103,39 +101,45 @@ describe('WS - Orders : CRUD', async () => {
 
     describe('Fetch informations', () => {
       it('should login in BO', async function () {
-        await loginCommon.loginBO(this, page);
+        await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
+
+        await boLoginPage.goTo(page, global.BO.URL);
+        await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
+
+        const pageTitle = await boDashboardPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boDashboardPage.pageTitle);
       });
 
       describe('Fetch the Webservice Key', () => {
         it('should go to \'Advanced Parameters > Webservice\' page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'goToWebservicePage', baseContext);
 
-          await dashboardPage.goToSubMenu(
+          await boDashboardPage.goToSubMenu(
             page,
-            dashboardPage.advancedParametersLink,
-            dashboardPage.webserviceLink,
+            boDashboardPage.advancedParametersLink,
+            boDashboardPage.webserviceLink,
           );
-          await webservicePage.closeSfToolBar(page);
+          await boWebservicesPage.closeSfToolBar(page);
 
-          const pageTitle = await webservicePage.getPageTitle(page);
-          expect(pageTitle).to.contains(webservicePage.pageTitle);
+          const pageTitle = await boWebservicesPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boWebservicesPage.pageTitle);
         });
 
         it('should filter list by key description', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'filterBeforeDelete', baseContext);
 
-          await webservicePage.resetAndGetNumberOfLines(page);
-          await webservicePage.filterWebserviceTable(
+          await boWebservicesPage.resetAndGetNumberOfLines(page);
+          await boWebservicesPage.filterWebserviceTable(
             page,
             'input',
             'description',
             wsKeyDescription,
           );
 
-          const description = await webservicePage.getTextColumnFromTable(page, 1, 'description');
+          const description = await boWebservicesPage.getTextColumnFromTable(page, 1, 'description');
           expect(description).to.contains(wsKeyDescription);
 
-          wsKey = await webservicePage.getTextColumnFromTable(page, 1, 'key');
+          wsKey = await boWebservicesPage.getTextColumnFromTable(page, 1, 'key');
           authorization = `Basic ${Buffer.from(`${wsKey}:`).toString('base64')}`;
           expect(wsKey).to.not.have.lengthOf(0);
         });
@@ -145,35 +149,35 @@ describe('WS - Orders : CRUD', async () => {
         it('should go to \'Orders > Shopping carts\' page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'goToShoppingCartsPage', baseContext);
 
-          await dashboardPage.goToSubMenu(
+          await boDashboardPage.goToSubMenu(
             page,
-            dashboardPage.ordersParentLink,
-            dashboardPage.shoppingCartsLink,
+            boDashboardPage.ordersParentLink,
+            boDashboardPage.shoppingCartsLink,
           );
 
-          const pageTitle = await shoppingCartsPage.getPageTitle(page);
-          expect(pageTitle).to.contains(shoppingCartsPage.pageTitle);
+          const pageTitle = await boShoppingCartsPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boShoppingCartsPage.pageTitle);
         });
 
         it('should reset all filters', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'resetFiltersFirst', baseContext);
 
-          const numberOfShoppingCarts = await shoppingCartsPage.resetAndGetNumberOfLines(page);
+          const numberOfShoppingCarts = await boShoppingCartsPage.resetAndGetNumberOfLines(page);
           expect(numberOfShoppingCarts).to.be.gt(0);
         });
 
         it('should search the non ordered shopping cart', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'searchNonOrderedShoppingCarts', baseContext);
 
-          await shoppingCartsPage.filterTable(page, 'select', 'status', 'Non ordered');
+          await boShoppingCartsPage.filterTable(page, 'select', 'status', 'Non ordered');
 
-          const numberOfShoppingCartsAfterFilter = await shoppingCartsPage.getNumberOfElementInGrid(page);
+          const numberOfShoppingCartsAfterFilter = await boShoppingCartsPage.getNumberOfElementInGrid(page);
           expect(numberOfShoppingCartsAfterFilter).to.gte(1);
 
-          const textColumn = await shoppingCartsPage.getTextColumn(page, 1, 'status');
+          const textColumn = await boShoppingCartsPage.getTextColumn(page, 1, 'status');
           expect(textColumn).to.contains('Non ordered');
 
-          idShoppingCart = parseInt(await shoppingCartsPage.getTextColumn(page, 1, 'id_cart'), 10);
+          idShoppingCart = parseInt(await boShoppingCartsPage.getTextColumn(page, 1, 'id_cart'), 10);
           expect(idShoppingCart).to.be.gt(0);
         });
       });
@@ -198,7 +202,7 @@ describe('WS - Orders : CRUD', async () => {
 
         xmlResponse = await apiResponse.text();
 
-        const isValidXML = xml.isValid(xmlResponse);
+        const isValidXML = utilsXML.isValid(xmlResponse);
         expect(isValidXML).to.eq(true);
       });
 
@@ -230,7 +234,7 @@ describe('WS - Orders : CRUD', async () => {
           expect(nodeAttributes.length).to.be.eq(0);
 
           // Empty value
-          const isEmptyNode: boolean = xml.isEmpty(node);
+          const isEmptyNode: boolean = utilsXML.isEmpty(node);
           expect(isEmptyNode, `The node ${node.nodeName} is not empty`).to.eq(true);
         }
       });
@@ -255,7 +259,7 @@ describe('WS - Orders : CRUD', async () => {
 
         xmlResponse = await apiResponse.text();
 
-        const isValidXML = xml.isValid(xmlResponse);
+        const isValidXML = utilsXML.isValid(xmlResponse);
         expect(isValidXML).to.eq(true);
       });
 
@@ -302,7 +306,7 @@ describe('WS - Orders : CRUD', async () => {
           }
 
           // Empty value
-          const isEmptyNode = xml.isEmpty(node);
+          const isEmptyNode = utilsXML.isEmpty(node);
           expect(isEmptyNode, `The node ${node.nodeName} is not empty`).to.eq(true);
         }
       });
@@ -479,39 +483,39 @@ describe('WS - Orders : CRUD', async () => {
         it('should go to \'Orders > Orders\' page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'goToOrdersPage', baseContext);
 
-          await dashboardPage.goToSubMenu(
+          await boDashboardPage.goToSubMenu(
             page,
-            dashboardPage.ordersParentLink,
-            dashboardPage.ordersLink,
+            boDashboardPage.ordersParentLink,
+            boDashboardPage.ordersLink,
           );
-          await ordersPage.closeSfToolBar(page);
+          await boOrdersPage.closeSfToolBar(page);
 
-          const pageTitle = await ordersPage.getPageTitle(page);
-          expect(pageTitle).to.contains(ordersPage.pageTitle);
+          const pageTitle = await boOrdersPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boOrdersPage.pageTitle);
         });
 
         it('should filter order by ID', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'filterToUpdateAfterPost', baseContext);
 
           // Filter
-          await ordersPage.resetFilter(page);
-          await ordersPage.filterOrders(page, 'input', 'id_order', orderNodeID as string);
+          await boOrdersPage.resetFilter(page);
+          await boOrdersPage.filterOrders(page, 'input', 'id_order', orderNodeID as string);
 
           // Check number of orders
-          const numberOfOrdersAfterFilter = await ordersPage.getNumberOfElementInGrid(page);
+          const numberOfOrdersAfterFilter = await boOrdersPage.getNumberOfElementInGrid(page);
           expect(numberOfOrdersAfterFilter).to.be.eq(1);
 
-          const textColumn = await ordersPage.getTextColumn(page, 'id_order', 1);
+          const textColumn = await boOrdersPage.getTextColumn(page, 'id_order', 1);
           expect(textColumn).to.contains(orderNodeID);
         });
 
         it('should go to view order page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'goToViewOrderPageAfterPost', baseContext);
 
-          await ordersPage.goToOrder(page, 1);
+          await boOrdersPage.goToOrder(page, 1);
 
-          const pageTitle = await viewOrderBasePage.getPageTitle(page);
-          expect(pageTitle).to.contains(viewOrderBasePage.pageTitle);
+          const pageTitle = await boOrdersViewBasePage.getPageTitle(page);
+          expect(pageTitle).to.contains(boOrdersViewBasePage.pageTitle);
         });
 
         describe('Block : Header', () => {
@@ -519,7 +523,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderCurrentState1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'current_state');
-            const value = await viewOrderBasePage.getOrderStatusID(page);
+            const value = await boOrdersViewBasePage.getOrderStatusID(page);
             expect(value.toString()).to.be.eq(xmlValue);
           });
 
@@ -527,7 +531,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderReference1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'reference');
-            const value = await viewOrderBasePage.getOrderReference(page);
+            const value = await boOrdersViewBasePage.getOrderReference(page);
             expect(value).to.be.eq(xmlValue);
           });
         });
@@ -537,7 +541,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderIdCustomer1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'id_customer');
-            const value = await orderPageCustomerBlock.getCustomerID(page);
+            const value = await boOrdersViewBlockCustomersPage.getCustomerID(page);
             expect(value.toString()).to.be.eq(xmlValue);
           });
         });
@@ -547,7 +551,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderTotalDiscounts1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'total_discounts');
-            const value = await orderPageProductsBlock.getOrderTotalDiscounts(page);
+            const value = await boOrdersViewBlockProductsPage.getOrderTotalDiscounts(page);
             expect(parseFloat(value.toString())).to.be.eq(parseFloat(xmlValue as string));
           });
 
@@ -555,7 +559,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderTotalShipping1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'total_shipping');
-            const value = await orderPageProductsBlock.getOrderTotalShipping(page);
+            const value = await boOrdersViewBlockProductsPage.getOrderTotalShipping(page);
             expect(parseFloat(value.toString())).to.be.eq(parseFloat(xmlValue as string));
           });
 
@@ -563,7 +567,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderTotalProductWT1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'total_products_wt');
-            const value = await orderPageProductsBlock.getOrderTotalProducts(page);
+            const value = await boOrdersViewBlockProductsPage.getOrderTotalProducts(page);
             expect(parseFloat(value.toString())).to.be.eq(parseFloat(xmlValue as string));
           });
 
@@ -571,14 +575,14 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderTotalPaid1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'total_paid');
-            const value = await orderPageProductsBlock.getOrderTotalProducts(page);
+            const value = await boOrdersViewBlockProductsPage.getOrderTotalProducts(page);
             expect(parseFloat(value.toString())).to.be.eq(parseFloat(xmlValue as string));
           });
 
           it('should check order_rows', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderRows1', baseContext);
 
-            const value = await orderPageProductsBlock.getProductDetails(page, 1);
+            const value = await boOrdersViewBlockProductsPage.getProductDetails(page, 1);
 
             const xmlValueID = orderXml.getAttributeValue(xmlResponseCreate, 'associations/order_rows/order_row/id');
             expect(value.orderDetailId).to.be.eq(xmlValueID);
@@ -596,7 +600,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderNote1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'note');
-            const value = await orderPageTabListBlock.getOrderNoteContent(page);
+            const value = await boOrdersViewBlockTabListPage.getOrderNoteContent(page);
             expect(value).to.be.eq(xmlValue);
           });
 
@@ -604,7 +608,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderRecyclable1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'recyclable');
-            const value = await orderPageTabListBlock.hasBadgeRecyclable(page) ? '1' : '0';
+            const value = await boOrdersViewBlockTabListPage.hasBadgeRecyclable(page) ? '1' : '0';
             expect(value).to.be.eq(xmlValue);
           });
 
@@ -612,7 +616,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderGift1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'gift');
-            const value = await orderPageTabListBlock.hasBadgeGift(page) ? '1' : '0';
+            const value = await boOrdersViewBlockTabListPage.hasBadgeGift(page) ? '1' : '0';
             expect(value).to.be.eq(xmlValue);
           });
 
@@ -620,25 +624,25 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderGiftMessage1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'gift_message');
-            const value = await orderPageTabListBlock.getGiftMessage(page);
+            const value = await boOrdersViewBlockTabListPage.getGiftMessage(page);
             expect(value).to.be.eq(xmlValue);
           });
 
           it('should display the Documents Tabs', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'displayDocumentsTab1', baseContext);
 
-            const isTabVisible = await orderPageTabListBlock.goToDocumentsTab(page);
+            const isTabVisible = await boOrdersViewBlockTabListPage.goToDocumentsTab(page);
             expect(isTabVisible).to.be.equal(true);
           });
 
           it('should check invoice_number', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderInvoiceNumber1', baseContext);
 
-            const documentType = await orderPageTabListBlock.getDocumentType(page, 1);
+            const documentType = await boOrdersViewBlockTabListPage.getDocumentType(page, 1);
             expect(documentType).to.be.equal('Invoice');
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'invoice_number');
-            const value = await orderPageTabListBlock.getFileName(page, 1);
+            const value = await boOrdersViewBlockTabListPage.getFileName(page, 1);
             expect(value).to.endWith(xmlValue as string);
           });
 
@@ -646,21 +650,21 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderInvoiceDate1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'invoice_date');
-            const value = await orderPageTabListBlock.getDocumentDate(page, 1);
-            expect(value).to.be.equal(date.setDateFormat('mm/dd/yyyy', xmlValue as string, false));
+            const value = await boOrdersViewBlockTabListPage.getDocumentDate(page, 1);
+            expect(value).to.be.equal(utilsDate.setDateFormat('mm/dd/yyyy', xmlValue as string, false));
           });
 
           it('should display the Carriers Tabs', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'displayCarrierTab1', baseContext);
 
-            const isTabVisible = await orderPageTabListBlock.goToCarriersTab(page);
+            const isTabVisible = await boOrdersViewBlockTabListPage.goToCarriersTab(page);
             expect(isTabVisible).to.be.equal(true);
           });
 
           it('should check shipping_number', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderShippingNumber1', baseContext);
 
-            const value = await orderPageTabListBlock.getCarrierDetails(page);
+            const value = await boOrdersViewBlockTabListPage.getCarrierDetails(page);
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'shipping_number');
             expect(value.trackingNumber).to.be.eq(xmlValue);
           });
@@ -668,12 +672,12 @@ describe('WS - Orders : CRUD', async () => {
           it('should check id_carrier', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderIdCarrier1', baseContext);
 
-            const isModalVisibleBefore = await orderPageTabListBlock.clickOnEditLink(page);
+            const isModalVisibleBefore = await boOrdersViewBlockTabListPage.clickOnEditLink(page);
             expect(isModalVisibleBefore).to.be.equal(true);
 
-            const value = await orderPageTabListBlock.getShippingCarrierID(page);
+            const value = await boOrdersViewBlockTabListPage.getShippingCarrierID(page);
 
-            const isModalHiddenAfter = await orderPageTabListBlock.closeOrderShippingModal(page);
+            const isModalHiddenAfter = await boOrdersViewBlockTabListPage.closeOrderShippingModal(page);
             expect(isModalHiddenAfter).to.be.equal(true);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'id_carrier');
@@ -686,7 +690,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderPayment1', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseCreate, 'payment');
-            const value = await orderPagePaymentBlock.getPaymentsDetails(page, 1);
+            const value = await boOrdersViewBlockPaymentsPage.getPaymentsDetails(page, 1);
             expect(value.paymentMethod).to.be.eq(xmlValue);
           });
         });
@@ -695,21 +699,21 @@ describe('WS - Orders : CRUD', async () => {
           it('should go to \'Orders > Orders\' page', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'goToOrdersPagePostReset', baseContext);
 
-            await dashboardPage.goToSubMenu(
+            await boDashboardPage.goToSubMenu(
               page,
-              dashboardPage.ordersParentLink,
-              dashboardPage.ordersLink,
+              boDashboardPage.ordersParentLink,
+              boDashboardPage.ordersLink,
             );
-            await ordersPage.closeSfToolBar(page);
+            await boOrdersPage.closeSfToolBar(page);
 
-            const pageTitle = await ordersPage.getPageTitle(page);
-            expect(pageTitle).to.contains(ordersPage.pageTitle);
+            const pageTitle = await boOrdersPage.getPageTitle(page);
+            expect(pageTitle).to.contains(boOrdersPage.pageTitle);
           });
 
           it('should reset all filters', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirstAfterPost', baseContext);
 
-            const numberOfCountries = await ordersPage.resetAndGetNumberOfLines(page);
+            const numberOfCountries = await boOrdersPage.resetAndGetNumberOfLines(page);
             expect(numberOfCountries).to.be.above(0);
           });
         });
@@ -834,24 +838,24 @@ describe('WS - Orders : CRUD', async () => {
           await testContext.addContextItem(this, 'testIdentifier', 'filterToUpdateAfterPut', baseContext);
 
           // Filter
-          await ordersPage.resetFilter(page);
-          await ordersPage.filterOrders(page, 'input', 'id_order', orderNodeID as string);
+          await boOrdersPage.resetFilter(page);
+          await boOrdersPage.filterOrders(page, 'input', 'id_order', orderNodeID as string);
 
           // Check number of orders
-          const numberOfOrdersAfterFilter = await ordersPage.getNumberOfElementInGrid(page);
+          const numberOfOrdersAfterFilter = await boOrdersPage.getNumberOfElementInGrid(page);
           expect(numberOfOrdersAfterFilter).to.be.eq(1);
 
-          const textColumn = await ordersPage.getTextColumn(page, 'id_order', 1);
+          const textColumn = await boOrdersPage.getTextColumn(page, 'id_order', 1);
           expect(textColumn).to.contains(orderNodeID);
         });
 
         it('should go to view order page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'goToViewOrderPageAfterPut', baseContext);
 
-          await ordersPage.goToOrder(page, 1);
+          await boOrdersPage.goToOrder(page, 1);
 
-          const pageTitle = await viewOrderBasePage.getPageTitle(page);
-          expect(pageTitle).to.contains(viewOrderBasePage.pageTitle);
+          const pageTitle = await boOrdersViewBasePage.getPageTitle(page);
+          expect(pageTitle).to.contains(boOrdersViewBasePage.pageTitle);
         });
 
         describe('Block : Header', () => {
@@ -859,7 +863,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderCurrentState2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'current_state');
-            const value = await viewOrderBasePage.getOrderStatusID(page);
+            const value = await boOrdersViewBasePage.getOrderStatusID(page);
             expect(value.toString()).to.be.eq(xmlValue);
           });
 
@@ -867,7 +871,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderReference2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'reference');
-            const value = await viewOrderBasePage.getOrderReference(page);
+            const value = await boOrdersViewBasePage.getOrderReference(page);
             expect(value).to.be.eq(xmlValue);
           });
         });
@@ -877,7 +881,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderIdCustomer2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'id_customer');
-            const value = await orderPageCustomerBlock.getCustomerID(page);
+            const value = await boOrdersViewBlockCustomersPage.getCustomerID(page);
             expect(value.toString()).to.be.eq(xmlValue);
           });
         });
@@ -887,7 +891,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderTotalDiscounts2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'total_discounts');
-            const value = await orderPageProductsBlock.getOrderTotalDiscounts(page);
+            const value = await boOrdersViewBlockProductsPage.getOrderTotalDiscounts(page);
             expect(parseFloat(value.toString())).to.be.eq(parseFloat(xmlValue as string));
           });
 
@@ -895,7 +899,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderTotalShipping2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'total_shipping');
-            const value = await orderPageProductsBlock.getOrderTotalShipping(page);
+            const value = await boOrdersViewBlockProductsPage.getOrderTotalShipping(page);
             expect(parseFloat(value.toString())).to.be.eq(parseFloat(xmlValue as string));
           });
 
@@ -903,7 +907,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderTotalProductWT2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'total_products_wt');
-            const value = await orderPageProductsBlock.getOrderTotalProducts(page);
+            const value = await boOrdersViewBlockProductsPage.getOrderTotalProducts(page);
             expect(parseFloat(value.toString())).to.be.eq(parseFloat(xmlValue as string));
           });
 
@@ -911,14 +915,14 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderTotalPaid2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'total_paid');
-            const value = await orderPageProductsBlock.getOrderTotalProducts(page);
+            const value = await boOrdersViewBlockProductsPage.getOrderTotalProducts(page);
             expect(parseFloat(value.toString())).to.be.eq(parseFloat(xmlValue as string));
           });
 
           it('should check order_rows', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderRows2', baseContext);
 
-            const value = await orderPageProductsBlock.getProductDetails(page, 1);
+            const value = await boOrdersViewBlockProductsPage.getProductDetails(page, 1);
 
             const xmlValueID = orderXml.getAttributeValue(xmlResponseUpdate, 'associations/order_rows/order_row/id');
             expect(value.orderDetailId).to.be.eq(xmlValueID);
@@ -936,7 +940,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderNote2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'note');
-            const value = await orderPageTabListBlock.getOrderNoteContent(page);
+            const value = await boOrdersViewBlockTabListPage.getOrderNoteContent(page);
             expect(value).to.be.eq(xmlValue);
           });
 
@@ -944,7 +948,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderRecyclable2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'recyclable');
-            const value = await orderPageTabListBlock.hasBadgeRecyclable(page) ? '1' : '0';
+            const value = await boOrdersViewBlockTabListPage.hasBadgeRecyclable(page) ? '1' : '0';
             expect(value).to.be.eq(xmlValue);
           });
 
@@ -952,7 +956,7 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderGift2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'gift');
-            const value = await orderPageTabListBlock.hasBadgeGift(page) ? '1' : '0';
+            const value = await boOrdersViewBlockTabListPage.hasBadgeGift(page) ? '1' : '0';
             expect(value).to.be.eq(xmlValue);
           });
 
@@ -960,25 +964,25 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderGiftMessage2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'gift_message');
-            const value = await orderPageTabListBlock.getGiftMessage(page);
+            const value = await boOrdersViewBlockTabListPage.getGiftMessage(page);
             expect(value).to.be.eq(xmlValue);
           });
 
           it('should display the Documents Tabs', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'displayDocumentsTab2', baseContext);
 
-            const isTabVisible = await orderPageTabListBlock.goToDocumentsTab(page);
+            const isTabVisible = await boOrdersViewBlockTabListPage.goToDocumentsTab(page);
             expect(isTabVisible).to.be.equal(true);
           });
 
           it('should check invoice_number', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderInvoiceNumber2', baseContext);
 
-            const documentType = await orderPageTabListBlock.getDocumentType(page, 1);
+            const documentType = await boOrdersViewBlockTabListPage.getDocumentType(page, 1);
             expect(documentType).to.be.equal('Invoice');
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'invoice_number');
-            const value = await orderPageTabListBlock.getFileName(page, 1);
+            const value = await boOrdersViewBlockTabListPage.getFileName(page, 1);
             expect(value).to.endWith(xmlValue as string);
           });
 
@@ -986,21 +990,21 @@ describe('WS - Orders : CRUD', async () => {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderInvoiceDate2', baseContext);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'invoice_date');
-            const value = await orderPageTabListBlock.getDocumentDate(page, 1);
-            expect(value).to.be.equal(date.setDateFormat('mm/dd/yyyy', xmlValue as string, false));
+            const value = await boOrdersViewBlockTabListPage.getDocumentDate(page, 1);
+            expect(value).to.be.equal(utilsDate.setDateFormat('mm/dd/yyyy', xmlValue as string, false));
           });
 
           it('should display the Carriers Tabs', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'displayCarrierTab2', baseContext);
 
-            const isTabVisible = await orderPageTabListBlock.goToCarriersTab(page);
+            const isTabVisible = await boOrdersViewBlockTabListPage.goToCarriersTab(page);
             expect(isTabVisible).to.be.equal(true);
           });
 
           it('should check shipping_number', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderShippingNumber2', baseContext);
 
-            const value = await orderPageTabListBlock.getCarrierDetails(page);
+            const value = await boOrdersViewBlockTabListPage.getCarrierDetails(page);
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'shipping_number');
             expect(value.trackingNumber).to.be.eq(xmlValue);
           });
@@ -1008,12 +1012,12 @@ describe('WS - Orders : CRUD', async () => {
           it('should check id_carrier', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'checkOrderIdCarrier2', baseContext);
 
-            const isModalVisibleBefore = await orderPageTabListBlock.clickOnEditLink(page);
+            const isModalVisibleBefore = await boOrdersViewBlockTabListPage.clickOnEditLink(page);
             expect(isModalVisibleBefore).to.be.equal(true);
 
-            const value = await orderPageTabListBlock.getShippingCarrierID(page);
+            const value = await boOrdersViewBlockTabListPage.getShippingCarrierID(page);
 
-            const isModalHiddenAfter = await orderPageTabListBlock.closeOrderShippingModal(page);
+            const isModalHiddenAfter = await boOrdersViewBlockTabListPage.closeOrderShippingModal(page);
             expect(isModalHiddenAfter).to.be.equal(true);
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'id_carrier');
@@ -1029,7 +1033,7 @@ describe('WS - Orders : CRUD', async () => {
             this.skip();
 
             const xmlValue = orderXml.getAttributeValue(xmlResponseUpdate, 'payment');
-            const value = await orderPagePaymentBlock.getPaymentsDetails(page, 1);
+            const value = await boOrdersViewBlockPaymentsPage.getPaymentsDetails(page, 1);
             expect(value.paymentMethod).to.be.eq(xmlValue);
           });
         });
@@ -1038,21 +1042,21 @@ describe('WS - Orders : CRUD', async () => {
           it('should go to \'Orders > Orders\' page', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'goToOrdersPagePutReset', baseContext);
 
-            await dashboardPage.goToSubMenu(
+            await boDashboardPage.goToSubMenu(
               page,
-              dashboardPage.ordersParentLink,
-              dashboardPage.ordersLink,
+              boDashboardPage.ordersParentLink,
+              boDashboardPage.ordersLink,
             );
-            await ordersPage.closeSfToolBar(page);
+            await boOrdersPage.closeSfToolBar(page);
 
-            const pageTitle = await ordersPage.getPageTitle(page);
-            expect(pageTitle).to.contains(ordersPage.pageTitle);
+            const pageTitle = await boOrdersPage.getPageTitle(page);
+            expect(pageTitle).to.contains(boOrdersPage.pageTitle);
           });
 
           it('should reset all filters', async function () {
             await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirstAfterPut', baseContext);
 
-            const numberOfCountries = await ordersPage.resetAndGetNumberOfLines(page);
+            const numberOfCountries = await boOrdersPage.resetAndGetNumberOfLines(page);
             expect(numberOfCountries).to.be.above(0);
           });
         });
@@ -1088,18 +1092,18 @@ describe('WS - Orders : CRUD', async () => {
         await testContext.addContextItem(this, 'testIdentifier', 'filterToUpdateAfterDelete', baseContext);
 
         // Filter
-        await ordersPage.resetFilter(page);
-        await ordersPage.filterOrders(page, 'input', 'id_order', orderNodeID as string);
+        await boOrdersPage.resetFilter(page);
+        await boOrdersPage.filterOrders(page, 'input', 'id_order', orderNodeID as string);
 
         // Check number of orders
-        const numberOfCountriesAfterFilter = await ordersPage.getNumberOfElementInGrid(page);
+        const numberOfCountriesAfterFilter = await boOrdersPage.getNumberOfElementInGrid(page);
         expect(numberOfCountriesAfterFilter).to.be.eq(0);
       });
 
       it('should reset all filters', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'resetFilterFirst', baseContext);
 
-        const numberOfCountries = await ordersPage.resetAndGetNumberOfLines(page);
+        const numberOfCountries = await boOrdersPage.resetAndGetNumberOfLines(page);
         expect(numberOfCountries).to.be.above(0);
       });
     });

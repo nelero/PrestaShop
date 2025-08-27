@@ -1,4 +1,4 @@
-{#**
+{# **
  * Copyright since 2007 PrestaShop SA and Contributors
  * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
  *
@@ -21,7 +21,7 @@
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
  * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
- *#}
+ * #}
 <!DOCTYPE html>
 <!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7 lt-ie6"> <![endif]-->
 <!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8 ie7"> <![endif]-->
@@ -30,11 +30,11 @@
 <html lang="{{ ps.isoUser }}">
 <head>
   {% block header %}
-    {{ component('LegacyHeadTag') }}
+    {{ component('LegacyHeadTag', {metaTitle: metaTitle|default}) }}
   {% endblock %}
 </head>
 
-<body class="lang-{{ ps.isoUser }}{% if ps.isRtlLanguage %} lang-rtl{% endif %} ps_back-office page-sidebar {{ ps.controllerName|escape|lower }}{% if ps.menuCollapsed %} page-sidebar-closed{% endif %}{% if ps.multiShop|default(false) %} multishop-enabled{% endif %}{% if ps.debugMode|default(false) %} developer-mode{% endif %}"
+<body class="lang-{{ ps.isoUser }}{% if ps.isRtlLanguage %} lang-rtl{% endif %} ps_back-office page-sidebar {{ ps.controllerName|escape|lower }}{% if ps.menuCollapsed %} page-sidebar-closed{% endif %}{% if ps.multiShop|default(false) %} multishop-enabled{% endif %}{% if ps.debugMode|default(false) %} developer-mode{% endif %} ps-bo-rebrand"
   {% if ps.jsRouterMetadata is defined and ps.jsRouterMetadata.base_url is defined %}data-base-url="{{ ps.jsRouterMetadata.base_url }}"{% endif %}
   {% if ps.jsRouterMetadata is defined and ps.jsRouterMetadata.token is defined %}data-token="{{ ps.jsRouterMetadata.token }}"{% endif %}
 >
@@ -67,8 +67,7 @@
           </a>
         </div>
       {% endif %}
-
-      {% if ps.maintenanceModeEnabled|default(false) %}
+      {% if ps.isMaintenanceEnabled|default(false) %}
         {% set maintenanceTitle %}
           <p class="text-left">
             <strong>
@@ -96,9 +95,7 @@
              title="{{ maintenanceTitle|e('html') }}"
              href="{{ url('admin_maintenance') }}"
           >
-            <i class="material-icons"
-               style="{% if ps.frontOfficeAccessibleForAdmins|default(false) %}color: #72c279;{% endif %}"
-            >build</i>
+            <i class="material-icons">build</i>
             <span>{{ 'Maintenance mode'|trans({}, 'Admin.Navigation.Header') }}</span>
           </a>
         </div>
@@ -109,7 +106,7 @@
       {{ component('LegacyNotificationsCenter') }}
       {{ component('LegacyEmployeeDropdown') }}
 
-      {# Ajax running *#}
+      {# Ajax running * #}
       <span id="ajax_running" class="hidden-xs">
         <i class="icon-refresh icon-spin icon-fw"></i>
       </span>
@@ -125,7 +122,14 @@
     <div id="content" class="bootstrap{% if ps.displayedWithTabs %} with-tabs{% endif %}">
       {# Page header toolbar #}
       {% if showContentHeader %}
-        {{ component('LegacyToolbar') }}
+        {{ component('LegacyToolbar', {
+          layoutTitle: layoutTitle|default,
+          layoutSubTitle: layoutSubTitle|default,
+          helpLink: help_link|default,
+          enableSidebar: enableSidebar|default(false),
+          layoutHeaderToolbarBtn: layoutHeaderToolbarBtn|default([]),
+          breadcrumbLinks: breadcrumbLinks|default([]),
+        }) }}
       {% endif %}
 
       {% block content_header %}
@@ -146,7 +150,7 @@
     </div>
   </div>
 
-  {% if modals is not empty %}
+  {% if modals is defined and modals is not empty %}
     <div class="bootstrap">
       {{ modals|raw }}
     </div>

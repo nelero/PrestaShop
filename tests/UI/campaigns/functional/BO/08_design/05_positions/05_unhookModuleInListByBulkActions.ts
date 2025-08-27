@@ -1,17 +1,19 @@
 // Import utils
-import helper from '@utils/helpers';
 import testContext from '@utils/testContext';
 
 // Import commonTests
-import loginCommon from '@commonTests/BO/loginBO';
+import hookModule from '@commonTests/BO/design/positions';
 
-// Import pages
-import dashboardPage from '@pages/BO/dashboard';
-import positionsPage from '@pages/BO/design/positions';
-
-import {dataModules} from '@prestashop-core/ui-testing';
+import {
+  boDashboardPage,
+  boDesignPositionsPage,
+  boLoginPage,
+  type BrowserContext,
+  dataModules,
+  type Page,
+  utilsPlaywright,
+} from '@prestashop-core/ui-testing';
 import {expect} from 'chai';
-import type {BrowserContext, Page} from 'playwright';
 
 const baseContext: string = 'functional_BO_design_positions_unhookModuleInListByBulkActions';
 
@@ -19,55 +21,63 @@ describe('BO - Design - Positions : Unhook module in list by Bulk actions', asyn
   let browserContext: BrowserContext;
   let page: Page;
 
-  // Pre-Test : Hook a module (Hook : "displayAdminCustomers" / Module : "")
-  // @todo : https://github.com/PrestaShop/PrestaShop/issues/35612
+  // Pre-Test : Hook a module (Hook : "GraphEngine" / Module : "ps_banner")
+  hookModule(dataModules.psBanner, 'GraphEngine', `${baseContext}_preTest_1`);
 
-  // before and after functions
-  before(async function () {
-    browserContext = await helper.createBrowserContext(this.browser);
-    page = await helper.newTab(browserContext);
-  });
+  describe('Unhook module in list by Bulk actions', async () => {
+    // before and after functions
+    before(async function () {
+      browserContext = await utilsPlaywright.createBrowserContext(this.browser);
+      page = await utilsPlaywright.newTab(browserContext);
+    });
 
-  after(async () => {
-    await helper.closeBrowserContext(browserContext);
-  });
+    after(async () => {
+      await utilsPlaywright.closeBrowserContext(browserContext);
+    });
 
-  it('should login in BO', async function () {
-    await loginCommon.loginBO(this, page);
-  });
+    it('should login in BO', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
 
-  it('should go to \'Design > Positions\' page', async function () {
-    await testContext.addContextItem(this, 'testIdentifier', 'goToPositionsPage', baseContext);
+      await boLoginPage.goTo(page, global.BO.URL);
+      await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
 
-    await dashboardPage.goToSubMenu(
-      page,
-      dashboardPage.designParentLink,
-      dashboardPage.positionsLink,
-    );
-    await positionsPage.closeSfToolBar(page);
+      const pageTitle = await boDashboardPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDashboardPage.pageTitle);
+    });
 
-    const pageTitle = await positionsPage.getPageTitle(page);
-    expect(pageTitle).to.contains(positionsPage.pageTitle);
-  });
+    it('should go to \'Design > Positions\' page', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'goToPositionsPage', baseContext);
 
-  it('should select a hook and display the selection box', async function () {
-    await testContext.addContextItem(this, 'testIdentifier', 'selectHookModule', baseContext);
+      await boDashboardPage.goToSubMenu(
+        page,
+        boDashboardPage.designParentLink,
+        boDashboardPage.positionsLink,
+      );
+      await boDesignPositionsPage.closeSfToolBar(page);
 
-    const isSelectionBoxVisible = await positionsPage.selectHookModule(
-      page,
-      'displayAdminCustomers',
-      dataModules.blockwishlist.tag,
-    );
-    expect(isSelectionBoxVisible).to.equal(true);
+      const pageTitle = await boDesignPositionsPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boDesignPositionsPage.pageTitle);
+    });
 
-    const numSelectedHook = await positionsPage.getSelectedHookCount(page);
-    expect(numSelectedHook).to.be.equal(1);
-  });
+    it('should select a hook and display the selection box', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'selectHookModule', baseContext);
 
-  it('should unhook the selection', async function () {
-    await testContext.addContextItem(this, 'testIdentifier', 'unhookSelection', baseContext);
+      const isSelectionBoxVisible = await boDesignPositionsPage.selectHookModule(
+        page,
+        'GraphEngine',
+        dataModules.psBanner.tag,
+      );
+      expect(isSelectionBoxVisible).to.equal(true);
 
-    const textResult = await positionsPage.unhookSelection(page);
-    expect(textResult).to.equal(positionsPage.messageModuleRemovedFromHook);
+      const numSelectedHook = await boDesignPositionsPage.getSelectedHookCount(page);
+      expect(numSelectedHook).to.be.equal(1);
+    });
+
+    it('should unhook the selection', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'unhookSelection', baseContext);
+
+      const textResult = await boDesignPositionsPage.unhookSelection(page);
+      expect(textResult).to.equal(boDesignPositionsPage.messageModuleRemovedFromHook);
+    });
   });
 });
